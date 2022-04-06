@@ -1,0 +1,119 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: citanodes.citacloud.rivtower.com
+spec:
+  group: citacloud.rivtower.com
+  names:
+    kind: CitaNode
+    listKind: CitaNodeList
+    plural: citanodes
+    singular: citanode
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: CitaNode is the Schema for the citanodes API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: CitaNodeSpec defines the desired state of CitaNode
+            properties:
+              chainName:
+                description: chain name
+                type: string
+              configMapRef:
+                description: config.toml && kms.db configmap ref
+                type: string
+              consensusType:
+                description: ConsensusType
+                enum:
+                - BFT
+                - Raft
+                type: string
+              desiredState:
+                description: desire status
+                enum:
+                - Running
+                - Stopped
+                type: string
+              enableTls:
+                description: EnableTLS
+                type: boolean
+              imageInfo:
+                description: ImageInfo
+                properties:
+                  consensusImage:
+                    description: ConsensusImage the image of consensus container
+                    type: string
+                  controllerImage:
+                    description: ControllerImage the image of controller container
+                    type: string
+                  executorImage:
+                    description: ExecutorImage the image of executor container
+                    type: string
+                  kmsImage:
+                    description: KmsImage the image of kms container
+                    type: string
+                  networkImage:
+                    description: NetworkImage the image of network container
+                    type: string
+                  pullPolicy:
+                    description: PullPolicy
+                    type: string
+                  storageImage:
+                    description: StorageImage the image of storage container
+                    type: string
+                type: object
+              logLevel:
+                default: info
+                description: log level
+                type: string
+              storageClassName:
+                description: storage class name
+                type: string
+              storageSize:
+                description: storage size
+                format: int64
+                type: integer
+            required:
+            - chainName
+            - configMapRef
+            - consensusType
+            - desiredState
+            - storageClassName
+            - storageSize
+            type: object
+          status:
+            description: CitaNodeStatus defines the observed state of CitaNode
+            properties:
+              status:
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
