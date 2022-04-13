@@ -28,7 +28,4 @@ resources:
     memory: 64Mi
 
 # serviceAccountName -- You can specify the service account.
-serviceAccountName: cita-cloud-operator-sa
-
-# enableWebhooks -- Whether to enable webhooks, you should ensure cert-manager has been installed if set true
-enableWebhooks: false
+serviceAccountName: cita-node-operator-sa
