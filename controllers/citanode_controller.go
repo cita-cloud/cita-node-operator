@@ -19,10 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"github.com/operator-framework/operator-lib/status"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -39,7 +41,8 @@ import (
 // CitaNodeReconciler reconciles a CitaNode object
 type CitaNodeReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 //+kubebuilder:rbac:groups=citacloud.rivtower.com,resources=citanodes,verbs=get;list;watch;create;update;patch;delete
@@ -107,6 +110,7 @@ func (r *CitaNodeReconciler) SetDefaultStatus(ctx context.Context, node *citaclo
 			logger.Error(err, fmt.Sprintf("set citanode default status [%s] failed", node.Status.Status))
 			return false, err
 		}
+		r.Recorder.Event(node, corev1.EventTypeNormal, string(citacloudv1.Starting), "Create CITA Node")
 		logger.Info(fmt.Sprintf("set citanode default status [%s] success", node.Status.Status))
 		return true, nil
 	}
@@ -160,8 +164,19 @@ func (r *CitaNodeReconciler) SyncStatus(ctx context.Context, node *citacloudv1.C
 	}
 	if value.(*NodeValue).Status != node.Status.Status {
 		logger.Info(fmt.Sprintf("update action: convert status from [%s] to [%s]", node.Status.Status, value.(*NodeValue).Status))
-		node.Status.Status = value.(*NodeValue).Status
-		return r.Status().Update(ctx, node)
+
+		var cr status.ConditionReason
+		msg := fmt.Sprintf("External action: [%s] -> [%s]", node.Status.Status, value.(*NodeValue).Status)
+		switch value.(*NodeValue).Status {
+		case citacloudv1.Starting:
+			cr = citacloudv1.ExternalStartAction
+		case citacloudv1.Stopping:
+			cr = citacloudv1.ExternalStopAction
+		case citacloudv1.Upgrading:
+			cr = citacloudv1.ExternalUpdateAction
+		}
+		return r.SetStatusAndCondition(ctx, value.(*NodeValue).Status, node, citacloudv1.ExternalTrigger, corev1.ConditionTrue,
+			cr, msg, corev1.EventTypeNormal)
 	}
 	if value.(*NodeValue).Status == citacloudv1.Starting {
 		sts := &appsv1.StatefulSet{}
@@ -169,10 +184,11 @@ func (r *CitaNodeReconciler) SyncStatus(ctx context.Context, node *citacloudv1.C
 		if err != nil {
 			return err
 		}
+		// todo: check
 		if sts.Status.Replicas == sts.Status.ReadyReplicas {
 			logger.Info("convert status from [Starting] to [Running]")
-			node.Status.Status = citacloudv1.Running
-			return r.Status().Update(ctx, node)
+			return r.SetStatusAndCondition(ctx, citacloudv1.Running, node, citacloudv1.PodReady, corev1.ConditionTrue,
+				citacloudv1.ContainerAllReady, "Containers are all ready", corev1.EventTypeNormal)
 		}
 	}
 	if value.(*NodeValue).Status == citacloudv1.Stopping {
@@ -181,8 +197,8 @@ func (r *CitaNodeReconciler) SyncStatus(ctx context.Context, node *citacloudv1.C
 		if err != nil {
 			if errors.IsNotFound(err) {
 				logger.Info("convert status from [Stopping] to [Stopped]")
-				node.Status.Status = citacloudv1.Stopped
-				return r.Status().Update(ctx, node)
+				return r.SetStatusAndCondition(ctx, citacloudv1.Stopped, node, citacloudv1.PodReady, corev1.ConditionFalse,
+					citacloudv1.CitaNodeStopped, "CITA Node has stopped", corev1.EventTypeNormal)
 			}
 			return err
 		}
@@ -193,13 +209,14 @@ func (r *CitaNodeReconciler) SyncStatus(ctx context.Context, node *citacloudv1.C
 		if err != nil {
 			return err
 		}
-		for _, status := range pod.Status.ContainerStatuses {
-			if !status.Ready {
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if !containerStatus.Ready {
 				logger.Info("convert status from [Running] to [Error]")
-				node.Status.Status = citacloudv1.Error
-				return r.Status().Update(ctx, node)
+				return r.SetStatusAndCondition(ctx, citacloudv1.Error, node, citacloudv1.PodReady, corev1.ConditionFalse,
+					citacloudv1.ContainerNotReady, "Containers are not ready", corev1.EventTypeWarning)
 			}
 		}
+		// todo: set CitaNodeReady conditionType
 	}
 	if value.(*NodeValue).Status == citacloudv1.Error {
 		pod := &corev1.Pod{}
@@ -208,16 +225,39 @@ func (r *CitaNodeReconciler) SyncStatus(ctx context.Context, node *citacloudv1.C
 			return err
 		}
 		allReady := true
-		for _, status := range pod.Status.ContainerStatuses {
-			if !status.Ready {
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			if !containerStatus.Ready {
 				allReady = false
 				break
 			}
 		}
 		if allReady {
 			logger.Info("convert status from [Error] to [Running]")
-			node.Status.Status = citacloudv1.Running
-			return r.Status().Update(ctx, node)
+			return r.SetStatusAndCondition(ctx, citacloudv1.Running, node, citacloudv1.PodReady, corev1.ConditionTrue,
+				citacloudv1.ContainerAllReady, "Containers are all ready", corev1.EventTypeNormal)
+		}
+	}
+	return nil
+}
+
+func (r *CitaNodeReconciler) SetStatusAndCondition(ctx context.Context, wantedStatus citacloudv1.Status,
+	node *citacloudv1.CitaNode, conditionType status.ConditionType, conditionStatus corev1.ConditionStatus,
+	reason status.ConditionReason, message string, eventType string) error {
+	logger := log.FromContext(ctx)
+	node.Status.Status = wantedStatus
+	conditions := node.GetConditions()
+	condition := status.Condition{
+		Type:    conditionType,
+		Status:  conditionStatus,
+		Reason:  reason,
+		Message: message,
+	}
+	r.Recorder.Event(node, eventType, string(condition.Reason), condition.Message)
+	if conditions.SetCondition(condition) {
+		if err := r.Status().Update(ctx, node); err != nil {
+			logger.Error(err, "update status failed")
+			r.Recorder.Event(node, corev1.EventTypeWarning, string(reason), "Failed to update resource status")
+			return err
 		}
 	}
 	return nil

@@ -17,6 +17,7 @@ limitations under the License.
 package v1
 
 import (
+	"github.com/operator-framework/operator-lib/status"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -53,11 +54,15 @@ type CitaNodeSpec struct {
 
 // CitaNodeStatus defines the observed state of CitaNode
 type CitaNodeStatus struct {
-	Status Status `json:"status,omitempty"`
+	Status     Status            `json:"status,omitempty"`
+	Conditions status.Conditions `json:"conditions,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:shortName=cn
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status"
 
 // CitaNode is the Schema for the citanodes API
 type CitaNode struct {
@@ -80,6 +85,22 @@ type CitaNodeList struct {
 func init() {
 	SchemeBuilder.Register(&CitaNode{}, &CitaNodeList{})
 }
+
+func (c *CitaNode) GetConditions() *status.Conditions {
+	return &c.Status.Conditions
+}
+
+const (
+	PodReady             status.ConditionType   = "PodReady"
+	ExternalTrigger      status.ConditionType   = "ExternalTrigger"
+	CitaNodeReady        status.ConditionType   = "CitaNodeReady"
+	ContainerNotReady    status.ConditionReason = "ContainerNotReady"
+	ContainerAllReady    status.ConditionReason = "ContainerAllReady"
+	ExternalStartAction  status.ConditionReason = "ExternalStartAction"
+	ExternalStopAction   status.ConditionReason = "ExternalStopAction"
+	ExternalUpdateAction status.ConditionReason = "ContainerAllReady"
+	CitaNodeStopped      status.ConditionReason = "CitaNodeStopped"
+)
 
 type LogLevel string
 
