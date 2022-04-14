@@ -1,0 +1,22 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: CitaNode
+metadata:
+  name: citanode-sample
+  namespace: cita
+spec:
+  chainName: test-chain
+  enableTls: false
+  consensusType: Raft
+  configMapRef: citanode-sample-cm
+  logLevel: info
+  storageSize: 21474836480
+  storageClassName: "nas-client-provisioner"
+  imageInfo:
+    pullPolicy: IfNotPresent
+    networkImage: citacloud/network_p2p:v6.3.3
+    consensusImage: citacloud/consensus_raft:v6.3.3
+    executorImage: citacloud/executor_evm:v6.3.3
+    storageImage: citacloud/storage_rocksdb:v6.3.3
+    controllerImage: citacloud/controller:v6.3.3
+    kmsImage: citacloud/kms_sm:v6.3.3
+  desiredState: "Running"

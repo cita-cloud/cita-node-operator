@@ -1,0 +1,24 @@
+# permissions for end users to edit citanodes.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: citanode-editor-role
+rules:
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - citanodes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - citanodes/status
+  verbs:
+  - get

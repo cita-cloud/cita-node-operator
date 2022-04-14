@@ -1,0 +1,16 @@
+domain: rivtower.com
+layout:
+- go.kubebuilder.io/v3
+projectName: cita-node-operator
+repo: github.com/cita-cloud/cita-node-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: rivtower.com
+  group: citacloud
+  kind: CitaNode
+  path: github.com/cita-cloud/cita-node-operator/api/v1
+  version: v1
+version: "3"
