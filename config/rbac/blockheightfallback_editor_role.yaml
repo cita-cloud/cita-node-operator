@@ -1,0 +1,24 @@
+# permissions for end users to edit blockheightfallbacks.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: blockheightfallback-editor-role
+rules:
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - blockheightfallbacks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - blockheightfallbacks/status
+  verbs:
+  - get

@@ -13,4 +13,13 @@ resources:
   kind: CitaNode
   path: github.com/cita-cloud/cita-node-operator/api/v1
   version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: rivtower.com
+  group: citacloud
+  kind: BlockHeightFallback
+  path: github.com/cita-cloud/cita-node-operator/api/v1
+  version: v1
 version: "3"

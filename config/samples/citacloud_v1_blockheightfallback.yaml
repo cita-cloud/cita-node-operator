@@ -1,0 +1,6 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: BlockHeightFallback
+metadata:
+  name: blockheightfallback-sample
+spec:
+  # TODO(user): Add fields here
