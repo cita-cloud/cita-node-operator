@@ -2,5 +2,10 @@ apiVersion: citacloud.rivtower.com/v1
 kind: BlockHeightFallback
 metadata:
   name: blockheightfallback-sample
+  namespace: cita
 spec:
-  # TODO(user): Add fields here
+  chainName: jj
+  namespace: cita
+  blockHeight: 100
+  chainDeployMethod: helm
+  pullPolicy: Always

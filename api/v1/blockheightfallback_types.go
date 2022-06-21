@@ -17,7 +17,10 @@ limitations under the License.
 package v1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	fallback "github.com/cita-cloud/cita-node-operator/pkg"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -27,16 +30,23 @@ import (
 type BlockHeightFallbackSpec struct {
 	// ChainName
 	ChainName string `json:"chainName"`
+	// Namespace
+	Namespace string `json:"namespace"`
 	// BlockHeight
 	BlockHeight int64 `json:"blockHeight"`
 	// ChainDeployMethod
-	ChainDeployMethod ChainDeployMethod `json:"chainDeployMethod"`
+	ChainDeployMethod fallback.ChainDeployMethod `json:"chainDeployMethod"`
+	// Image
+	Image string `json:"image,omitempty"`
+	// PullPolicy
+	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
 }
 
 // BlockHeightFallbackStatus defines the observed state of BlockHeightFallback
 type BlockHeightFallbackStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	Status JobConditionType `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
@@ -64,10 +74,23 @@ func init() {
 	SchemeBuilder.Register(&BlockHeightFallback{}, &BlockHeightFallbackList{})
 }
 
-type ChainDeployMethod string
+type JobConditionType string
+
+// These are valid conditions of a job.
+const (
+	// JobActive means the job is active.
+	JobActive JobConditionType = "Active"
+	// JobComplete means the job has completed its execution.
+	JobComplete JobConditionType = "Complete"
+	// JobFailed means the job has failed its execution.
+	JobFailed JobConditionType = "Failed"
+)
+
+const JobServiceAccount = "cita-cloud-operator-sa"
 
 const (
-	PythonOperator ChainDeployMethod = "PythonOperator"
-	Helm           ChainDeployMethod = "Helm"
-	CRDOperator    ChainDeployMethod = "CRDOperator"
+	VolumeName      = "datadir"
+	VolumeMountPath = "/mnt"
 )
+
+const DefaultImage = "registry.devops.rivtower.com/cita-cloud/operator/fallback-job:v0.0.1"

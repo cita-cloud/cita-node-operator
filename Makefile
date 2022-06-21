@@ -2,7 +2,8 @@
 # Image URL to use all building/pushing image targets
 DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/operator/cita-node-operator:v0.0.1
 IMG ?= citacloud/cita-node-operator
-JOB_IMG ?= registry.devops.rivtower.com/cita-cloud/operator/cloud-job:v0.0.1
+JOB_DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/operator/fallback-job:v0.0.1
+JOB_IMG ?= citacloud/fallback-job
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
 
@@ -88,7 +89,19 @@ job-build: ## Build job image with the manager.
 
 .PHONY: job-push
 job-push: ## Push dev image with the manager.
-	docker push ${JOB_IMG}
+	docker push ${JOB_DEV_IMG}
+
+.PHONY: job-image-latest
+job-image-latest:
+	# Build image with latest stable
+	docker buildx build -t $(JOB_IMG):latest --build-arg version=$(GIT_COMMIT) \
+    		--platform linux/amd64,linux/arm64 -f ./Dockerfile_job . --push
+
+.PHONY: job-image-version
+job-image-version:
+	[ -z `git status --porcelain` ] || (git --no-pager diff && exit 255)
+	docker buildx build -t $(JOB_IMG):$(VERSION) --build-arg version=$(GIT_COMMIT) \
+		--platform linux/amd64,linux/arm64 -f ./Dockerfile_job . --push
 
 .PHONY: image-latest
 image-latest:
