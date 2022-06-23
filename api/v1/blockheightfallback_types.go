@@ -51,6 +51,7 @@ type BlockHeightFallbackStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:shortName=bhf
 
 // BlockHeightFallback is the Schema for the blockheightfallbacks API
 type BlockHeightFallback struct {
@@ -93,4 +94,4 @@ const (
 	VolumeMountPath = "/mnt"
 )
 
-const DefaultImage = "registry.devops.rivtower.com/cita-cloud/operator/fallback-job:v0.0.1"
+const DefaultImage = "registry.devops.rivtower.com/cita-cloud/operator/cloud-job:v0.0.1"

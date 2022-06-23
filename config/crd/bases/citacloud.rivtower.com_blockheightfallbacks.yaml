@@ -12,6 +12,8 @@ spec:
     kind: BlockHeightFallback
     listKind: BlockHeightFallbackList
     plural: blockheightfallbacks
+    shortNames:
+    - bhf
     singular: blockheightfallback
   scope: Namespaced
   versions:
