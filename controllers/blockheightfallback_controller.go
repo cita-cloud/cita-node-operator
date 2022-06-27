@@ -172,6 +172,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 								"--chain-name", bhf.Spec.ChainName,
 								"--deploy-method", string(bhf.Spec.ChainDeployMethod),
 								"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+								"--node-list", bhf.Spec.NodeList,
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

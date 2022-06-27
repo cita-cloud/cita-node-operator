@@ -17,10 +17,9 @@ limitations under the License.
 package v1
 
 import (
+	fallback "github.com/cita-cloud/cita-node-operator/pkg/chain"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	fallback "github.com/cita-cloud/cita-node-operator/pkg"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -36,6 +35,8 @@ type BlockHeightFallbackSpec struct {
 	BlockHeight int64 `json:"blockHeight"`
 	// ChainDeployMethod
 	ChainDeployMethod fallback.ChainDeployMethod `json:"chainDeployMethod"`
+	// NodeList
+	NodeList string `json:"nodeList,omitempty"`
 	// Image
 	Image string `json:"image,omitempty"`
 	// PullPolicy
@@ -94,4 +95,4 @@ const (
 	VolumeMountPath = "/mnt"
 )
 
-const DefaultImage = "registry.devops.rivtower.com/cita-cloud/operator/cloud-job:v0.0.1"
+const DefaultImage = "registry.devops.rivtower.com/cita-cloud/operator/fallback-job:v0.0.1"

@@ -85,7 +85,7 @@ dev-push: ## Push dev image with the manager.
 
 .PHONY: job-build
 job-build: ## Build job image with the manager.
-	docker build --no-cache --platform linux/amd64 -t ${JOB_IMG} -f ./Dockerfile_job . --build-arg version=$(GIT_COMMIT)
+	docker build --platform linux/amd64 -t ${JOB_DEV_IMG} -f ./Dockerfile_job . --build-arg version=$(GIT_COMMIT)
 
 .PHONY: job-push
 job-push: ## Push dev image with the manager.

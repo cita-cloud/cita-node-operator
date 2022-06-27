@@ -19,7 +19,7 @@ package main
 import (
 	"context"
 	"flag"
-	fallback "github.com/cita-cloud/cita-node-operator/pkg"
+	chainpkg "github.com/cita-cloud/cita-node-operator/pkg/chain"
 	"go.uber.org/zap/zapcore"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -35,10 +35,12 @@ func main() {
 	var chainName string
 	var deployMethod string
 	var blockHeight int64
+	var nodeList string
 	flag.StringVar(&namespace, "namespace", "default", "The chain of namespace.")
 	flag.StringVar(&chainName, "chain-name", "test-chain", "The chain of name.")
 	flag.StringVar(&deployMethod, "deploy-method", "helm", "The chain of name.")
 	flag.Int64Var(&blockHeight, "block-height", 9999999, "The block height you want to recover.")
+	flag.StringVar(&nodeList, "node-list", "*", "The node or nodes that you want to fallback, like: node1,node2; If all, you can set *.")
 
 	opts := zap.Options{
 		Development: true,
@@ -48,23 +50,27 @@ func main() {
 	flag.Parse()
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	k8sClient, err := fallback.InitK8sClient()
+	k8sClient, err := chainpkg.InitK8sClient()
 	if err != nil {
 		setupLog.Error(err, "unable to init k8s client")
 		os.Exit(1)
 	}
 
-	var dm fallback.ChainDeployMethod
+	var dm chainpkg.ChainDeployMethod
 	switch deployMethod {
-	case string(fallback.Helm):
-		dm = fallback.Helm
-	case string(fallback.PythonOperator):
-		dm = fallback.PythonOperator
-	case string(fallback.CRDOperator):
-		dm = fallback.CRDOperator
+	case string(chainpkg.Helm):
+		dm = chainpkg.Helm
+	case string(chainpkg.PythonOperator):
+		dm = chainpkg.PythonOperator
+	case string(chainpkg.CRDOperator):
+		dm = chainpkg.CRDOperator
 	}
-	actuator := fallback.NewBlockHeightFallbackActuator(namespace, chainName, dm, k8sClient)
-	err = actuator.Run(context.Background(), blockHeight)
+
+	chain, err := chainpkg.CreateChain(dm, namespace, chainName, k8sClient)
+	if err != nil {
+		setupLog.Error(err, "unable to init chain")
+	}
+	err = chain.Fallback(context.Background(), blockHeight)
 	if err != nil {
 		setupLog.Error(err, "exec block height fallback failed")
 		os.Exit(1)

@@ -54,6 +54,9 @@ spec:
               namespace:
                 description: Namespace
                 type: string
+              nodeList:
+                description: NodeList
+                type: string
               pullPolicy:
                 description: PullPolicy
                 type: string
