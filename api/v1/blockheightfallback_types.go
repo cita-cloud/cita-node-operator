@@ -34,7 +34,7 @@ type BlockHeightFallbackSpec struct {
 	// BlockHeight
 	BlockHeight int64 `json:"blockHeight"`
 	// ChainDeployMethod
-	ChainDeployMethod fallback.ChainDeployMethod `json:"chainDeployMethod"`
+	ChainDeployMethod fallback.DeployMethod `json:"chainDeployMethod"`
 	// NodeList
 	NodeList string `json:"nodeList,omitempty"`
 	// Image
@@ -96,3 +96,10 @@ const (
 )
 
 const DefaultImage = "registry.devops.rivtower.com/cita-cloud/operator/fallback-job:v0.0.1"
+
+func (in BlockHeightFallback) AllNodes() bool {
+	if in.Spec.NodeList == "*" {
+		return true
+	}
+	return false
+}

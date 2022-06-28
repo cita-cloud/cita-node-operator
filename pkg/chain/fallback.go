@@ -32,28 +32,28 @@ type BlockHeightFallbackActuator struct {
 	Namespace         string
 	ChainName         string
 	ChainReplicas     *int32
-	ChainDeployMethod ChainDeployMethod
+	ChainDeployMethod DeployMethod
 	NodeList          string
 }
 
-type Creator func(namespace, name string, client client.Client) (Chain, error)
+type Creator func(namespace, name string, client client.Client, nodeStr string) (Chain, error)
 
-var chains = make(map[ChainDeployMethod]Creator)
+var chains = make(map[DeployMethod]Creator)
 
-func Register(deployMethod ChainDeployMethod, register Creator) {
+func Register(deployMethod DeployMethod, register Creator) {
 	chains[deployMethod] = register
 }
 
-func CreateChain(deployMethod ChainDeployMethod, namespace, name string, client client.Client) (Chain, error) {
+func CreateChain(deployMethod DeployMethod, namespace, name string, client client.Client, nodeStr string) (Chain, error) {
 	f, ok := chains[deployMethod]
 	if ok {
-		return f(namespace, name, client)
+		return f(namespace, name, client, nodeStr)
 	}
 	return nil, fmt.Errorf("invalid deploy type: %s", string(deployMethod))
 }
 
 type Chain interface {
-	GetResources(ctx context.Context) ([]client.Object, error)
+	InitResources(ctx context.Context) error
 	Stop(ctx context.Context) error
 	CheckStopped(ctx context.Context) error
 	Fallback(ctx context.Context, blockHeight int64) error

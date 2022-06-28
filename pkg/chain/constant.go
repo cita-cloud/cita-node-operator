@@ -16,10 +16,10 @@ limitations under the License.
 
 package chain
 
-type ChainDeployMethod string
+type DeployMethod string
 
 const (
-	PythonOperator ChainDeployMethod = "python"
-	Helm           ChainDeployMethod = "helm"
-	CRDOperator    ChainDeployMethod = "crd"
+	PythonOperator DeployMethod = "python"
+	Helm           DeployMethod = "helm"
+	CloudConfig    DeployMethod = "cloud-config"
 )

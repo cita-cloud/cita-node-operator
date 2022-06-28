@@ -56,17 +56,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	var dm chainpkg.ChainDeployMethod
+	var dm chainpkg.DeployMethod
 	switch deployMethod {
 	case string(chainpkg.Helm):
 		dm = chainpkg.Helm
 	case string(chainpkg.PythonOperator):
 		dm = chainpkg.PythonOperator
-	case string(chainpkg.CRDOperator):
-		dm = chainpkg.CRDOperator
+	case string(chainpkg.CloudConfig):
+		dm = chainpkg.CloudConfig
 	}
 
-	chain, err := chainpkg.CreateChain(dm, namespace, chainName, k8sClient)
+	chain, err := chainpkg.CreateChain(dm, namespace, chainName, k8sClient, nodeList)
 	if err != nil {
 		setupLog.Error(err, "unable to init chain")
 	}

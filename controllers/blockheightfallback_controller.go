@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	chainpkg "github.com/cita-cloud/cita-node-operator/pkg/chain"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -138,7 +139,12 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 
 func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (*v1.Job, error) {
 	labels := labelsForBlockHeightFallback(bhf)
-	pvcName, err := r.getPVC(ctx, bhf)
+
+	volumes, err := r.getVolumes(ctx, bhf)
+	if err != nil {
+		return nil, err
+	}
+	volumeMounts, err := r.getVolumeMounts(ctx, bhf)
 	if err != nil {
 		return nil, err
 	}
@@ -174,25 +180,10 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 								"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 								"--node-list", bhf.Spec.NodeList,
 							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      citacloudv1.VolumeName,
-									MountPath: citacloudv1.VolumeMountPath,
-								},
-							},
+							VolumeMounts: volumeMounts,
 						},
 					},
-					Volumes: []corev1.Volume{
-						{
-							Name: citacloudv1.VolumeName,
-							VolumeSource: corev1.VolumeSource{
-								PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-									ClaimName: pvcName,
-									ReadOnly:  false,
-								},
-							},
-						},
-					},
+					Volumes: volumes,
 				},
 			},
 		},
@@ -202,6 +193,102 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 		return nil, err
 	}
 	return job, nil
+}
+
+func (r *BlockHeightFallbackReconciler) getVolumes(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) ([]corev1.Volume, error) {
+	if bhf.Spec.ChainDeployMethod == chainpkg.Helm {
+		pvcName, err := r.getHelmPVC(ctx, bhf)
+		if err != nil {
+			return nil, err
+		}
+
+		return []corev1.Volume{{
+			Name: citacloudv1.VolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvcName,
+					ReadOnly:  false,
+				},
+			},
+		}}, nil
+	} else if bhf.Spec.ChainDeployMethod == chainpkg.PythonOperator {
+		pvcName, err := r.getPyPVC(ctx, bhf)
+		if err != nil {
+			return nil, err
+		}
+		return []corev1.Volume{{
+			Name: citacloudv1.VolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvcName,
+					ReadOnly:  false,
+				},
+			},
+		}}, nil
+	} else if bhf.Spec.ChainDeployMethod == chainpkg.CloudConfig {
+		pvcMap, cmMap, err := r.getCloudConfigVolumes(ctx, bhf)
+		if err != nil {
+			return nil, err
+		}
+		vols := make([]corev1.Volume, 0)
+		//  add pvc
+		for node, pvcName := range pvcMap {
+			vols = append(vols, corev1.Volume{
+				Name: fmt.Sprintf("%s-data", node),
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvcName,
+						ReadOnly:  false,
+					},
+				}})
+		}
+		// add configmap
+		for node, cmName := range cmMap {
+			vols = append(vols, corev1.Volume{
+				Name: fmt.Sprintf("%s-config", node),
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: cmName,
+						},
+					},
+				}})
+		}
+		return vols, nil
+	} else {
+		return nil, fmt.Errorf("mismatched deploy method")
+	}
+}
+
+func (r *BlockHeightFallbackReconciler) getVolumeMounts(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) ([]corev1.VolumeMount, error) {
+	if bhf.Spec.ChainDeployMethod == chainpkg.Helm || bhf.Spec.ChainDeployMethod == chainpkg.PythonOperator {
+		return []corev1.VolumeMount{
+			{
+				Name:      citacloudv1.VolumeName,
+				MountPath: citacloudv1.VolumeMountPath,
+			},
+		}, nil
+	} else if bhf.Spec.ChainDeployMethod == chainpkg.CloudConfig {
+		pvcMap, cmMap, err := r.getCloudConfigVolumes(ctx, bhf)
+		if err != nil {
+			return nil, err
+		}
+		volumeMounts := make([]corev1.VolumeMount, 0)
+		for node := range pvcMap {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      fmt.Sprintf("%s-data", node),
+				MountPath: fmt.Sprintf("/%s-data", node),
+			})
+		}
+		for node := range cmMap {
+			volumeMounts = append(volumeMounts, corev1.VolumeMount{
+				Name:      fmt.Sprintf("%s-config", node),
+				MountPath: fmt.Sprintf("/%s-config", node),
+			})
+		}
+		return volumeMounts, err
+	}
+	return nil, nil
 }
 
 func labelsForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) map[string]string {
@@ -229,7 +316,7 @@ func (r *BlockHeightFallbackReconciler) setDefaultStatus(bhf *citacloudv1.BlockH
 	return updateFlag
 }
 
-func (r *BlockHeightFallbackReconciler) getPVC(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, error) {
+func (r *BlockHeightFallbackReconciler) getHelmPVC(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, error) {
 	// find chain's statefuleset
 	sts := &appsv1.StatefulSet{}
 	err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.ChainName, Namespace: bhf.Spec.Namespace}, sts)
@@ -242,6 +329,76 @@ func (r *BlockHeightFallbackReconciler) getPVC(ctx context.Context, bhf *citaclo
 		}
 	}
 	return "", fmt.Errorf("cann't find pvc name")
+}
+
+func (r *BlockHeightFallbackReconciler) getPyPVC(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, error) {
+	// find chain's statefuleset
+	deployList := &appsv1.DeploymentList{}
+	deployOpts := []client.ListOption{
+		client.InNamespace(bhf.Spec.Namespace),
+		client.MatchingLabels(map[string]string{"chain_name": bhf.Spec.ChainName}),
+	}
+	if err := r.List(ctx, deployList, deployOpts...); err != nil {
+		return "", err
+	}
+	if len(deployList.Items) == 0 {
+		return "", fmt.Errorf("get chain deployment items is 0")
+	}
+	for _, volume := range deployList.Items[0].Spec.Template.Spec.Volumes {
+		if volume.Name == "datadir" {
+			return volume.PersistentVolumeClaim.ClaimName, nil
+		}
+	}
+	return "", fmt.Errorf("cann't find pvc name")
+}
+
+func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (map[string]string, map[string]string, error) {
+	pvcMap := make(map[string]string, 0)
+	cmMap := make(map[string]string, 0)
+	if bhf.AllNodes() {
+		stsList := &appsv1.StatefulSetList{}
+		stsOpts := []client.ListOption{
+			client.InNamespace(bhf.Spec.Namespace),
+			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.ChainName}),
+		}
+		if err := r.List(ctx, stsList, stsOpts...); err != nil {
+			return nil, nil, err
+		}
+		for _, sts := range stsList.Items {
+			pvcMap[sts.Name] = fmt.Sprintf("datadir-%s-0", sts.Name)
+			cmMap[sts.Name] = fmt.Sprintf("%s-config", sts.Name)
+		}
+		return pvcMap, cmMap, nil
+	} else {
+		for _, node := range chainpkg.GetNodeList(bhf.Spec.NodeList) {
+			pvcMap[node] = fmt.Sprintf("datadir-%s-0", node)
+			cmMap[node] = fmt.Sprintf("%s-config", node)
+		}
+		return pvcMap, cmMap, nil
+	}
+}
+
+func (r *BlockHeightFallbackReconciler) getCloudConfigCM(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (map[string]string, error) {
+	res := make(map[string]string, 0)
+	if bhf.AllNodes() {
+		stsList := &appsv1.StatefulSetList{}
+		stsOpts := []client.ListOption{
+			client.InNamespace(bhf.Spec.Namespace),
+			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.ChainName}),
+		}
+		if err := r.List(ctx, stsList, stsOpts...); err != nil {
+			return nil, err
+		}
+		for _, sts := range stsList.Items {
+			res[sts.Name] = fmt.Sprintf("datadir-%s-0", sts.Name)
+		}
+		return res, nil
+	} else {
+		for _, node := range chainpkg.GetNodeList(bhf.Spec.NodeList) {
+			res[node] = fmt.Sprintf("datadir-%s-0", node)
+		}
+		return res, nil
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

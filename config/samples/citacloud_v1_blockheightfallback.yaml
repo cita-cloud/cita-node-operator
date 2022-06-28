@@ -4,8 +4,9 @@ metadata:
   name: blockheightfallback-sample
   namespace: cita
 spec:
-  chainName: jj
+  chainName: test-chain-tls-bft
   namespace: cita
-  blockHeight: 100
-  chainDeployMethod: helm
+  blockHeight: 30
+  chainDeployMethod: cloud-config
+  nodeList: "*"
   pullPolicy: Always
