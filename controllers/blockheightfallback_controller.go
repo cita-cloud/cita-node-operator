@@ -156,7 +156,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 			Labels:    labels,
 		},
 		Spec: v1.JobSpec{
-			BackoffLimit: pointer.Int32(1),
+			BackoffLimit: pointer.Int32(0),
 
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
