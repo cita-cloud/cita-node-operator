@@ -1,4 +1,4 @@
-name: Build Docker Images
+name: Run Test && Build Latest Docker Images
 
 on:
   push:
@@ -7,7 +7,24 @@ on:
       - main
 
 jobs:
+  testing:
+    name: "Run tests"
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - name: "Checking out code"
+        uses: actions/checkout@v2
+      - name: Set up Go 1.17
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.17
+      - name: "Env Tests"
+        run: |
+          make test
   build-latest:
+    name: "Build latest image"
+    needs: testing
     runs-on: [self-hosted, Linux, alibaba-cloud]
     defaults:
       run:

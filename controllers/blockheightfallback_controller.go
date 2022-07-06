@@ -378,29 +378,6 @@ func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Contex
 	}
 }
 
-func (r *BlockHeightFallbackReconciler) getCloudConfigCM(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (map[string]string, error) {
-	res := make(map[string]string, 0)
-	if bhf.AllNodes() {
-		stsList := &appsv1.StatefulSetList{}
-		stsOpts := []client.ListOption{
-			client.InNamespace(bhf.Spec.Namespace),
-			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.ChainName}),
-		}
-		if err := r.List(ctx, stsList, stsOpts...); err != nil {
-			return nil, err
-		}
-		for _, sts := range stsList.Items {
-			res[sts.Name] = fmt.Sprintf("datadir-%s-0", sts.Name)
-		}
-		return res, nil
-	} else {
-		for _, node := range chainpkg.GetNodeList(bhf.Spec.NodeList) {
-			res[node] = fmt.Sprintf("datadir-%s-0", node)
-		}
-		return res, nil
-	}
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *BlockHeightFallbackReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
