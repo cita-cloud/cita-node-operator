@@ -72,6 +72,7 @@ func (p *pyChain) CheckStopped(ctx context.Context) error {
 	checkStopped = func(ctx context.Context) (bool, error) {
 		for _, nodeObj := range p.nodeObjs {
 			//deployResource := resource.(*appsv1.Deployment)
+			// todo
 			if nodeObj.Status.ReadyReplicas != 0 {
 				return false, nil
 			}

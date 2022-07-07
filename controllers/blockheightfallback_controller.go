@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -79,11 +80,79 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Check if the serviceAccount already exists, if not create a new one
-	// todo
+	foundServiceAccount := &corev1.ServiceAccount{}
+	err := r.Get(ctx, types.NamespacedName{Name: citacloudv1.FallbackJobServiceAccount, Namespace: bhf.Namespace}, foundServiceAccount)
+	if err != nil && errors.IsNotFound(err) {
+		sa := r.serviceAccountForBlockHeightFallback(bhf)
+		logger.Info("creating a new service account")
+		err = r.Create(ctx, sa)
+		if err != nil {
+			logger.Error(err, "failed to create new service account")
+			return ctrl.Result{}, err
+		}
+	} else if err != nil {
+		logger.Error(err, "failed to get service account")
+		return ctrl.Result{}, err
+	} else {
+		// todo reconcile
+	}
+
+	// Check if the cluster role already exists, if not create a new one
+	foundClusterRole := &rbacv1.ClusterRole{}
+	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.FallbackJobClusterRole}, foundClusterRole)
+	if err != nil && errors.IsNotFound(err) {
+		clusterRole := r.clusterRoleForBlockHeightFallback()
+		logger.Info("creating a new cluster role")
+		err = r.Create(ctx, clusterRole)
+		if err != nil {
+			logger.Error(err, "failed to create new cluster role")
+			return ctrl.Result{}, err
+		}
+	} else if err != nil {
+		logger.Error(err, "failed to get cluster role")
+		return ctrl.Result{}, err
+	} else {
+		// todo reconcile
+	}
+
+	// Check if the cluster role binding already exists, if not create a new one
+	foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
+	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.FallbackJobClusterRoleBinding}, foundClusterRoleBinding)
+	if err != nil && errors.IsNotFound(err) {
+		clusterRoleBinding := r.clusterRoleBindingForBlockHeightFallback(bhf)
+		logger.Info("creating a new cluster role binding")
+		err = r.Create(ctx, clusterRoleBinding)
+		if err != nil {
+			logger.Error(err, "failed to create new cluster role binding")
+			return ctrl.Result{}, err
+		}
+	} else if err != nil {
+		logger.Error(err, "failed to get cluster role binding")
+		return ctrl.Result{}, err
+	} else {
+		var existServiceAccount bool
+		for _, subject := range foundClusterRoleBinding.Subjects {
+			if subject.Name == citacloudv1.FallbackJobServiceAccount && subject.Namespace == bhf.Namespace {
+				existServiceAccount = true
+			}
+		}
+		if !existServiceAccount {
+			foundClusterRoleBinding.Subjects = append(foundClusterRoleBinding.Subjects, rbacv1.Subject{
+				Kind:      "ServiceAccount",
+				Name:      citacloudv1.FallbackJobServiceAccount,
+				Namespace: bhf.Namespace,
+			})
+			err := r.Update(ctx, foundClusterRoleBinding)
+			if err != nil {
+				logger.Error(err, "failed to update cluster role binding")
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	// Check if the job already exists, if not create a new one
-	found := &v1.Job{}
-	err := r.Get(ctx, types.NamespacedName{Name: bhf.Name, Namespace: bhf.Namespace}, found)
+	foundJob := &v1.Job{}
+	err = r.Get(ctx, types.NamespacedName{Name: bhf.Name, Namespace: bhf.Namespace}, foundJob)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
 		job, err := r.jobForBlockHeightFallback(ctx, bhf)
@@ -137,6 +206,61 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 	return ctrl.Result{}, nil
 }
 
+func (r *BlockHeightFallbackReconciler) serviceAccountForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) *corev1.ServiceAccount {
+	sa := &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      citacloudv1.FallbackJobServiceAccount,
+			Namespace: bhf.Namespace,
+		},
+	}
+	return sa
+}
+
+func (r *BlockHeightFallbackReconciler) clusterRoleForBlockHeightFallback() *rbacv1.ClusterRole {
+	stsPR := rbacv1.PolicyRule{
+		Verbs:     []string{"get", "list", "watch", "update"},
+		APIGroups: []string{"apps"},
+		Resources: []string{"statefulsets"},
+	}
+	depPR := rbacv1.PolicyRule{
+		Verbs:     []string{"get", "list", "watch", "update"},
+		APIGroups: []string{"apps"},
+		Resources: []string{"deployments"},
+	}
+
+	clusterRole := &rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: citacloudv1.FallbackJobClusterRole,
+		},
+		Rules: []rbacv1.PolicyRule{
+			stsPR,
+			depPR,
+		},
+	}
+	return clusterRole
+}
+
+func (r *BlockHeightFallbackReconciler) clusterRoleBindingForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) *rbacv1.ClusterRoleBinding {
+	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: citacloudv1.FallbackJobClusterRoleBinding,
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      citacloudv1.FallbackJobServiceAccount,
+				Namespace: bhf.Namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			APIGroup: "rbac.authorization.k8s.io",
+			Kind:     "ClusterRole",
+			Name:     citacloudv1.FallbackJobClusterRole,
+		},
+	}
+	return clusterRoleBinding
+}
+
 func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (*v1.Job, error) {
 	labels := labelsForBlockHeightFallback(bhf)
 
@@ -163,7 +287,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: citacloudv1.JobServiceAccount,
+					ServiceAccountName: citacloudv1.FallbackJobServiceAccount,
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{

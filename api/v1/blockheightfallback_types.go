@@ -88,7 +88,11 @@ const (
 	JobFailed JobConditionType = "Failed"
 )
 
-const JobServiceAccount = "cita-cloud-operator-sa"
+const (
+	FallbackJobServiceAccount     = "fallback-job"
+	FallbackJobClusterRole        = "fallback-job"
+	FallbackJobClusterRoleBinding = "fallback-job"
+)
 
 const (
 	VolumeName      = "datadir"
