@@ -8,6 +8,7 @@ header:
     - '.gitignore'
     - '.dockerignore'
     - 'Dockerfile'
+    - 'Dockerfile_job'
     - 'PROJECT'
     - 'LICENSE'
     - 'Makefile'
