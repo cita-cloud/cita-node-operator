@@ -13,6 +13,7 @@ header:
     - 'LICENSE'
     - 'Makefile'
     - 'README.md'
+    - 'README_CN.md'
     - 'charts/**'
     - 'go.mod'
     - 'go.sum'
