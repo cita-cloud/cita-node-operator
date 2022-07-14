@@ -14,16 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chain
+package python
 
 import (
 	"context"
 	"fmt"
+	chain2 "github.com/cita-cloud/cita-node-operator/pkg/chain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
+)
+
+const (
+	ChainName      = "test-chain"
+	ChainNamespace = "default"
+	timeout        = time.Second * 10
+	duration       = time.Second * 10
+	interval       = time.Millisecond * 250
 )
 
 var _ = Describe("Fallback for python chain", func() {
@@ -33,7 +43,7 @@ var _ = Describe("Fallback for python chain", func() {
 			createPythonChain(ctx)
 
 			By("Create python chain fallback interface")
-			chain, err := CreateChain(PythonOperator, ChainNamespace, ChainName, k8sClient, "*")
+			chain, err := chain2.CreateChain(chain2.PythonOperator, ChainNamespace, ChainName, k8sClient, "*")
 			Expect(err).NotTo(HaveOccurred())
 			err = chain.Fallback(ctx, 100)
 			Expect(err).NotTo(HaveOccurred())
@@ -42,7 +52,7 @@ var _ = Describe("Fallback for python chain", func() {
 		It("Should fallback to specified block height", func() {
 
 			By("Create python chain fallback interface")
-			chain, err := CreateChain(PythonOperator, ChainNamespace, ChainName, k8sClient, fmt.Sprintf("%s-3", ChainName))
+			chain, err := chain2.CreateChain(chain2.PythonOperator, ChainNamespace, ChainName, k8sClient, fmt.Sprintf("%s-3", ChainName))
 			Expect(err).NotTo(HaveOccurred())
 			err = chain.Fallback(ctx, 100)
 			Expect(err).NotTo(HaveOccurred())

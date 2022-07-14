@@ -14,20 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chain
+package cloud_config
 
 import (
 	"context"
 	"fmt"
+	"github.com/cita-cloud/cita-node-operator/pkg/chain"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilexec "k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strings"
 	"sync"
 	"time"
+)
+
+var (
+	cloudConfigChainLog = ctrl.Log.WithName("cloud-config-chain")
 )
 
 type cloudConfigChain struct {
@@ -47,7 +53,7 @@ func (c *cloudConfigChain) InitResources(ctx context.Context) error {
 	if err := c.List(ctx, stsList, stsOpts...); err != nil {
 		return err
 	}
-	if AllNode(c.nodeStr) {
+	if chain.AllNode(c.nodeStr) {
 		for _, sts := range stsList.Items {
 			c.nodeObjs = append(c.nodeObjs, sts)
 		}
@@ -55,7 +61,7 @@ func (c *cloudConfigChain) InitResources(ctx context.Context) error {
 		for _, sts := range stsList.Items {
 			if val, ok := sts.Labels["app.kubernetes.io/chain-node"]; ok {
 				if !ok {
-					fallbackLog.Error(fmt.Errorf("the statefuleset %s doesn't have label: app.kubernetes.io/chain-node", sts.Name), "")
+					cloudConfigChainLog.Error(fmt.Errorf("the statefuleset %s doesn't have label: app.kubernetes.io/chain-node", sts.Name), "")
 					continue
 				}
 				if strings.Contains(c.nodeStr, val) {
@@ -68,7 +74,7 @@ func (c *cloudConfigChain) InitResources(ctx context.Context) error {
 }
 
 func (c *cloudConfigChain) Stop(ctx context.Context) error {
-	fallbackLog.Info("stop chain for statefulset...")
+	cloudConfigChainLog.Info("stop chain for statefulset...")
 	for _, nodeObj := range c.nodeObjs {
 		//stsResource := resource.(*appsv1.StatefulSet)
 		nodeObj.Spec.Replicas = pointer.Int32(0)
@@ -78,13 +84,13 @@ func (c *cloudConfigChain) Stop(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		fallbackLog.Info(fmt.Sprintf("scale down statefulset [%s] to 0 successful", nodeObj.Name))
+		cloudConfigChainLog.Info(fmt.Sprintf("scale down statefulset [%s] to 0 successful", nodeObj.Name))
 	}
 	return nil
 }
 
 func (c *cloudConfigChain) CheckStopped(ctx context.Context) error {
-	fallbackLog.Info("wait the chain's nodes stopped...")
+	cloudConfigChainLog.Info("wait the chain's nodes stopped...")
 	var checkStopped func(context.Context) (bool, error)
 	checkStopped = func(ctx context.Context) (bool, error) {
 		for _, nodeObj := range c.nodeObjs {
@@ -108,7 +114,7 @@ func (c *cloudConfigChain) CheckStopped(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("wait statefulset replicas to 0 timeout")
 	}
-	fallbackLog.Info("the chain's all node have stopped")
+	cloudConfigChainLog.Info("the chain's all node have stopped")
 	return nil
 }
 
@@ -119,12 +125,12 @@ func (c *cloudConfigChain) Fallback(ctx context.Context, blockHeight int64) erro
 	}
 	err = c.Stop(ctx)
 	if err != nil {
-		fallbackLog.Error(err, "stop chain failed")
+		cloudConfigChainLog.Error(err, "stop chain failed")
 		return err
 	}
 	err = c.CheckStopped(ctx)
 	if err != nil {
-		fallbackLog.Error(err, "check chain stopped failed")
+		cloudConfigChainLog.Error(err, "check chain stopped failed")
 		return err
 	}
 
@@ -137,27 +143,27 @@ func (c *cloudConfigChain) Fallback(ctx context.Context, blockHeight int64) erro
 
 	err = c.Start(ctx)
 	if err != nil {
-		fallbackLog.Error(err, "start chain failed")
+		cloudConfigChainLog.Error(err, "start chain failed")
 		return err
 	}
 	return nil
 }
 
 func (c *cloudConfigChain) fallback(node string, blockHeight int64, wg *sync.WaitGroup) {
-	fallbackLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d]...", node, blockHeight))
+	cloudConfigChainLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d]...", node, blockHeight))
 	exec := utilexec.New()
 	err := exec.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
 		"--node-root", fmt.Sprintf("/%s-data", node),
 		"--config-path", fmt.Sprintf("/%s-config/config.toml", node)).Run()
 	if err != nil {
-		fallbackLog.Error(err, "exec block height fallback failed")
+		cloudConfigChainLog.Error(err, "exec block height fallback failed")
 	}
-	fallbackLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d] successful", node, blockHeight))
+	cloudConfigChainLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d] successful", node, blockHeight))
 	wg.Done()
 }
 
 func (c *cloudConfigChain) Start(ctx context.Context) error {
-	fallbackLog.Info("start chain for statefulset...")
+	cloudConfigChainLog.Info("start chain for statefulset...")
 	for _, nodeObj := range c.nodeObjs {
 		latestObj := &appsv1.StatefulSet{}
 		err := c.Get(ctx, types.NamespacedName{Name: nodeObj.Name, Namespace: nodeObj.Namespace}, latestObj)
@@ -172,12 +178,12 @@ func (c *cloudConfigChain) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		fallbackLog.Info(fmt.Sprintf("scale up statefulset [%s] to 1 successful", latestObj.Name))
+		cloudConfigChainLog.Info(fmt.Sprintf("scale up statefulset [%s] to 1 successful", latestObj.Name))
 	}
 	return nil
 }
 
-func newCloudConfigChain(namespace, name string, client client.Client, nodeStr string) (Chain, error) {
+func newCloudConfigChain(namespace, name string, client client.Client, nodeStr string) (chain.Chain, error) {
 	return &cloudConfigChain{
 		Client:    client,
 		namespace: namespace,
@@ -188,5 +194,5 @@ func newCloudConfigChain(namespace, name string, client client.Client, nodeStr s
 }
 
 func init() {
-	Register(CloudConfig, newCloudConfigChain)
+	chain.Register(chain.CloudConfig, newCloudConfigChain)
 }

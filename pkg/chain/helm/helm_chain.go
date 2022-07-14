@@ -14,19 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chain
+package helm
 
 import (
 	"context"
 	"fmt"
+	"github.com/cita-cloud/cita-node-operator/pkg/chain"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilexec "k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sync"
 	"time"
+)
+
+var (
+	helmChainLog = ctrl.Log.WithName("helm-chain")
 )
 
 type helmChain struct {
@@ -59,7 +65,7 @@ func (h *helmChain) InitResources(ctx context.Context) error {
 }
 
 func (h *helmChain) Stop(ctx context.Context) error {
-	fallbackLog.Info("stop chain for statefulset...")
+	helmChainLog.Info("stop chain for statefulset...")
 	for _, nodeObj := range h.nodeObjs {
 		// save replicas
 		h.replicas = nodeObj.Spec.Replicas
@@ -70,12 +76,12 @@ func (h *helmChain) Stop(ctx context.Context) error {
 			return err
 		}
 	}
-	fallbackLog.Info("scale down statefulset to 0 for chain successful")
+	helmChainLog.Info("scale down statefulset to 0 for chain successful")
 	return nil
 }
 
 func (h *helmChain) CheckStopped(ctx context.Context) error {
-	fallbackLog.Info("wait the chain's nodes stopped...")
+	helmChainLog.Info("wait the chain's nodes stopped...")
 	var checkStopped func(context.Context) (bool, error)
 	checkStopped = func(ctx context.Context) (bool, error) {
 		for _, nodeObj := range h.nodeObjs {
@@ -97,7 +103,7 @@ func (h *helmChain) CheckStopped(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("wait statefulset replicas to 0 timeout")
 	}
-	fallbackLog.Info("the chain's all node have stopped")
+	helmChainLog.Info("the chain's all node have stopped")
 	return nil
 }
 
@@ -108,12 +114,12 @@ func (h *helmChain) Fallback(ctx context.Context, blockHeight int64) error {
 	}
 	err = h.Stop(ctx)
 	if err != nil {
-		fallbackLog.Error(err, "stop chain failed")
+		helmChainLog.Error(err, "stop chain failed")
 		return err
 	}
 	err = h.CheckStopped(ctx)
 	if err != nil {
-		fallbackLog.Error(err, "check chain stopped failed")
+		helmChainLog.Error(err, "check chain stopped failed")
 		return err
 	}
 
@@ -127,7 +133,7 @@ func (h *helmChain) Fallback(ctx context.Context, blockHeight int64) error {
 
 	err = h.Start(ctx)
 	if err != nil {
-		fallbackLog.Error(err, "start chain failed")
+		helmChainLog.Error(err, "start chain failed")
 		return err
 	}
 
@@ -135,20 +141,20 @@ func (h *helmChain) Fallback(ctx context.Context, blockHeight int64) error {
 }
 
 func (h *helmChain) fallback(index int, blockHeight int64, wg *sync.WaitGroup) {
-	fallbackLog.Info(fmt.Sprintf("exec block height fallback: [node: %s-%d, height: %d]...", h.name, index, blockHeight))
+	helmChainLog.Info(fmt.Sprintf("exec block height fallback: [node: %s-%d, height: %d]...", h.name, index, blockHeight))
 	exec := utilexec.New()
 	err := exec.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
 		"--node-root", fmt.Sprintf("/mnt/%s-%d", h.name, index),
 		"--config-path", fmt.Sprintf("/mnt/%s-%d/config.toml", h.name, index)).Run()
 	if err != nil {
-		fallbackLog.Error(err, "exec block height fallback failed")
+		helmChainLog.Error(err, "exec block height fallback failed")
 	}
-	fallbackLog.Info(fmt.Sprintf("exec block height fallback: [node: %s-%d, height: %d] successful", h.name, index, blockHeight))
+	helmChainLog.Info(fmt.Sprintf("exec block height fallback: [node: %s-%d, height: %d] successful", h.name, index, blockHeight))
 	wg.Done()
 }
 
 func (h *helmChain) Start(ctx context.Context) error {
-	fallbackLog.Info("start chain for statefulset...")
+	helmChainLog.Info("start chain for statefulset...")
 	for _, nodeObj := range h.nodeObjs {
 		latestObj := &appsv1.StatefulSet{}
 		err := h.Get(ctx, types.NamespacedName{Name: nodeObj.Name, Namespace: nodeObj.Namespace}, latestObj)
@@ -160,12 +166,12 @@ func (h *helmChain) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		fallbackLog.Info(fmt.Sprintf("scale up statefulset to [%d] for chain successful", *h.replicas))
+		helmChainLog.Info(fmt.Sprintf("scale up statefulset to [%d] for chain successful", *h.replicas))
 	}
 	return nil
 }
 
-func newHelmChain(namespace, name string, client client.Client, nodeStr string) (Chain, error) {
+func newHelmChain(namespace, name string, client client.Client, nodeStr string) (chain.Chain, error) {
 	return &helmChain{
 		Client:    client,
 		namespace: namespace,
@@ -175,5 +181,5 @@ func newHelmChain(namespace, name string, client client.Client, nodeStr string) 
 }
 
 func init() {
-	Register(Helm, newHelmChain)
+	chain.Register(chain.Helm, newHelmChain)
 }

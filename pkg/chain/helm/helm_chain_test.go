@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chain
+package helm
 
 import (
 	"context"
+	chain2 "github.com/cita-cloud/cita-node-operator/pkg/chain"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -41,7 +42,7 @@ var _ = Describe("Fallback for helm chain", func() {
 			createHelmChain(ctx)
 
 			By("Create helm chain fallback interface")
-			chain, err := CreateChain(Helm, ChainNamespace, ChainName, k8sClient, "*")
+			chain, err := chain2.CreateChain(chain2.Helm, ChainNamespace, ChainName, k8sClient, "*")
 			Expect(err).NotTo(HaveOccurred())
 			err = chain.Fallback(ctx, 100)
 			Expect(err).NotTo(HaveOccurred())

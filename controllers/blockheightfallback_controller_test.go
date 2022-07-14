@@ -120,6 +120,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			By("By checking that job container parameters")
 			args := []string{
+				"fallback",
 				"--namespace", ChainNamespace,
 				"--chain-name", ChainName,
 				"--deploy-method", string(chainpkg.Helm),
@@ -200,6 +201,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			By("By checking that job container parameters")
 			args := []string{
+				"fallback",
 				"--namespace", ChainNamespace,
 				"--chain-name", ChainName,
 				"--deploy-method", string(chainpkg.PythonOperator),
@@ -281,6 +283,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			By("By checking that job container parameters")
 			args := []string{
+				"fallback",
 				"--namespace", ChainNamespace,
 				"--chain-name", ChainName,
 				"--deploy-method", string(chainpkg.CloudConfig),
@@ -357,6 +360,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			By("By checking that job container parameters")
 			args := []string{
+				"fallback",
 				"--namespace", ChainNamespace,
 				"--chain-name", ChainName,
 				"--deploy-method", string(chainpkg.PythonOperator),
@@ -434,6 +438,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			By("By checking that job container parameters")
 			args := []string{
+				"fallback",
 				"--namespace", ChainNamespace,
 				"--chain-name", ChainName,
 				"--deploy-method", string(chainpkg.CloudConfig),

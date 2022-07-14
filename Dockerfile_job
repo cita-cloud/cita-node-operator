@@ -11,18 +11,17 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY cmd/main.go main.go
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o fallback main.go
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o cita-node-cli pkg/main/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM debian:buster-slim
 WORKDIR /
-COPY --from=builder /workspace/fallback .
+COPY --from=builder /workspace/cita-node-cli .
 COPY --from=citacloud/cloud-op:v0.2.1 /usr/bin/cloud-op /usr/bin/
 #USER 65532:65532
 
-ENTRYPOINT ["/fallback"]
+ENTRYPOINT ["/cita-node-cli"]

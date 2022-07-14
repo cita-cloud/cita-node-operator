@@ -291,13 +291,14 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
-							Name:            "fallback",
+							Name:            "cita-node-cli",
 							Image:           bhf.Spec.Image,
 							ImagePullPolicy: bhf.Spec.PullPolicy,
 							Command: []string{
-								"/fallback",
+								"/cita-node-cli",
 							},
 							Args: []string{
+								"fallback",
 								"--namespace", bhf.Spec.Namespace,
 								"--chain-name", bhf.Spec.ChainName,
 								"--deploy-method", string(bhf.Spec.ChainDeployMethod),
