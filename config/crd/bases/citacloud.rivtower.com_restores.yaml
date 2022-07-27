@@ -5,23 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
-  name: blockheightfallbacks.citacloud.rivtower.com
+  name: restores.citacloud.rivtower.com
 spec:
   group: citacloud.rivtower.com
   names:
-    kind: BlockHeightFallback
-    listKind: BlockHeightFallbackList
-    plural: blockheightfallbacks
-    shortNames:
-    - bhf
-    singular: blockheightfallback
+    kind: Restore
+    listKind: RestoreList
+    plural: restores
+    singular: restore
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: BlockHeightFallback is the Schema for the blockheightfallbacks
-          API
+        description: Restore is the Schema for the restores API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,12 +33,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: BlockHeightFallbackSpec defines the desired state of BlockHeightFallback
+            description: RestoreSpec defines the desired state of Restore
             properties:
-              blockHeight:
-                description: BlockHeight
-                format: int64
-                type: integer
+              backup:
+                description: Backup
+                type: string
               chain:
                 description: Chain
                 type: string
@@ -61,14 +57,14 @@ spec:
                 description: PullPolicy
                 type: string
             required:
-            - blockHeight
+            - backup
             - chain
             - deployMethod
             - namespace
             - node
             type: object
           status:
-            description: BlockHeightFallbackStatus defines the observed state of BlockHeightFallback
+            description: RestoreStatus defines the observed state of Restore
             properties:
               endTime:
                 description: EndTime

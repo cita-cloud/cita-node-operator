@@ -14,43 +14,36 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package chain
+package node
 
 import (
 	"context"
 	"fmt"
+	"k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type BlockHeightFallbackActuator struct {
-	client.Client
-	Namespace         string
-	ChainName         string
-	ChainReplicas     *int32
-	ChainDeployMethod DeployMethod
-	NodeList          string
-}
+type Creator func(namespace, name string, client client.Client, chain string, execer exec.Interface) (Node, error)
 
-type Creator func(namespace, name string, client client.Client, nodeStr string) (Chain, error)
-
-var chains = make(map[DeployMethod]Creator)
+var nodes = make(map[DeployMethod]Creator)
 
 func Register(deployMethod DeployMethod, register Creator) {
-	chains[deployMethod] = register
+	nodes[deployMethod] = register
 }
 
-func CreateChain(deployMethod DeployMethod, namespace, name string, client client.Client, nodeStr string) (Chain, error) {
-	f, ok := chains[deployMethod]
+func CreateNode(deployMethod DeployMethod, namespace, name string, client client.Client, chain string, execer exec.Interface) (Node, error) {
+	f, ok := nodes[deployMethod]
 	if ok {
-		return f(namespace, name, client, nodeStr)
+		return f(namespace, name, client, chain, execer)
 	}
 	return nil, fmt.Errorf("invalid deploy type: %s", string(deployMethod))
 }
 
-type Chain interface {
-	InitResources(ctx context.Context) error
+type Node interface {
 	Stop(ctx context.Context) error
 	CheckStopped(ctx context.Context) error
 	Fallback(ctx context.Context, blockHeight int64) error
 	Start(ctx context.Context) error
+	Backup(ctx context.Context) error
+	Restore(ctx context.Context) error
 }

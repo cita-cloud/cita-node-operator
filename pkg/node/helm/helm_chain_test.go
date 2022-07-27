@@ -18,31 +18,47 @@ package helm
 
 import (
 	"context"
-	chain2 "github.com/cita-cloud/cita-node-operator/pkg/chain"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/exec"
+	fakeexec "k8s.io/utils/exec/testing"
 	"time"
 )
 
 const (
 	ChainName      = "test-chain"
+	NodeName       = "test-chain-1"
 	ChainNamespace = "default"
 	timeout        = time.Second * 10
 	duration       = time.Second * 10
 	interval       = time.Millisecond * 250
 )
 
-var _ = Describe("Fallback for helm chain", func() {
-	Context("Exec fallback for helm chain", func() {
+var _ = Describe("Fallback for helm node", func() {
+	Context("Exec fallback for helm node", func() {
 		It("Should fallback to specified block height", func() {
-			By("Prepare a helm chain")
+			By("Prepare a helm node")
 			createHelmChain(ctx)
 
-			By("Create helm chain fallback interface")
-			chain, err := chain2.CreateChain(chain2.Helm, ChainNamespace, ChainName, k8sClient, "*")
+			By("Create helm node fallback interface")
+
+			fcmd := fakeexec.FakeCmd{
+				RunScript: []fakeexec.FakeAction{
+					// Success.
+					func() ([]byte, []byte, error) { return nil, nil, nil },
+				},
+			}
+			fexec := fakeexec.FakeExec{
+				CommandScript: []fakeexec.FakeCommandAction{
+					func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
+				},
+			}
+
+			chain, err := nodepkg.CreateNode(nodepkg.Helm, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
 			err = chain.Fallback(ctx, 100)
 			Expect(err).NotTo(HaveOccurred())

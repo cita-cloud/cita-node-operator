@@ -17,8 +17,8 @@ spec:
             # namespace
             - --namespace
             - cita
-            # chain-name
-            - --chain-name
+            # node-name
+            - --node-name
             - jj
             # deploy method
             - --deploy-method

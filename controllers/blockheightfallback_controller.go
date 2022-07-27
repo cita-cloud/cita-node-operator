@@ -19,7 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
-	chainpkg "github.com/cita-cloud/cita-node-operator/pkg/chain"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -81,7 +81,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Check if the serviceAccount already exists, if not create a new one
 	foundServiceAccount := &corev1.ServiceAccount{}
-	err := r.Get(ctx, types.NamespacedName{Name: citacloudv1.FallbackJobServiceAccount, Namespace: bhf.Namespace}, foundServiceAccount)
+	err := r.Get(ctx, types.NamespacedName{Name: citacloudv1.CITANodeJobServiceAccount, Namespace: bhf.Namespace}, foundServiceAccount)
 	if err != nil && errors.IsNotFound(err) {
 		sa := r.serviceAccountForBlockHeightFallback(bhf)
 		logger.Info("creating a new service account")
@@ -99,7 +99,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Check if the cluster role already exists, if not create a new one
 	foundClusterRole := &rbacv1.ClusterRole{}
-	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.FallbackJobClusterRole}, foundClusterRole)
+	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.CITANodeJobClusterRole}, foundClusterRole)
 	if err != nil && errors.IsNotFound(err) {
 		clusterRole := r.clusterRoleForBlockHeightFallback()
 		logger.Info("creating a new cluster role")
@@ -117,7 +117,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Check if the cluster role binding already exists, if not create a new one
 	foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.FallbackJobClusterRoleBinding}, foundClusterRoleBinding)
+	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.CITANodeJobClusterRoleBinding}, foundClusterRoleBinding)
 	if err != nil && errors.IsNotFound(err) {
 		clusterRoleBinding := r.clusterRoleBindingForBlockHeightFallback(bhf)
 		logger.Info("creating a new cluster role binding")
@@ -132,14 +132,14 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 	} else {
 		var existServiceAccount bool
 		for _, subject := range foundClusterRoleBinding.Subjects {
-			if subject.Name == citacloudv1.FallbackJobServiceAccount && subject.Namespace == bhf.Namespace {
+			if subject.Name == citacloudv1.CITANodeJobServiceAccount && subject.Namespace == bhf.Namespace {
 				existServiceAccount = true
 			}
 		}
 		if !existServiceAccount {
 			foundClusterRoleBinding.Subjects = append(foundClusterRoleBinding.Subjects, rbacv1.Subject{
 				Kind:      "ServiceAccount",
-				Name:      citacloudv1.FallbackJobServiceAccount,
+				Name:      citacloudv1.CITANodeJobServiceAccount,
 				Namespace: bhf.Namespace,
 			})
 			err := r.Update(ctx, foundClusterRoleBinding)
@@ -209,7 +209,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 func (r *BlockHeightFallbackReconciler) serviceAccountForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) *corev1.ServiceAccount {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      citacloudv1.FallbackJobServiceAccount,
+			Name:      citacloudv1.CITANodeJobServiceAccount,
 			Namespace: bhf.Namespace,
 		},
 	}
@@ -230,7 +230,7 @@ func (r *BlockHeightFallbackReconciler) clusterRoleForBlockHeightFallback() *rba
 
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: citacloudv1.FallbackJobClusterRole,
+			Name: citacloudv1.CITANodeJobClusterRole,
 		},
 		Rules: []rbacv1.PolicyRule{
 			stsPR,
@@ -243,19 +243,19 @@ func (r *BlockHeightFallbackReconciler) clusterRoleForBlockHeightFallback() *rba
 func (r *BlockHeightFallbackReconciler) clusterRoleBindingForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) *rbacv1.ClusterRoleBinding {
 	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: citacloudv1.FallbackJobClusterRoleBinding,
+			Name: citacloudv1.CITANodeJobClusterRoleBinding,
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      "ServiceAccount",
-				Name:      citacloudv1.FallbackJobServiceAccount,
+				Name:      citacloudv1.CITANodeJobServiceAccount,
 				Namespace: bhf.Namespace,
 			},
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: "rbac.authorization.k8s.io",
 			Kind:     "ClusterRole",
-			Name:     citacloudv1.FallbackJobClusterRole,
+			Name:     citacloudv1.CITANodeJobClusterRole,
 		},
 	}
 	return clusterRoleBinding
@@ -287,7 +287,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: citacloudv1.FallbackJobServiceAccount,
+					ServiceAccountName: citacloudv1.CITANodeJobServiceAccount,
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
 						{
@@ -300,10 +300,10 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 							Args: []string{
 								"fallback",
 								"--namespace", bhf.Spec.Namespace,
-								"--chain-name", bhf.Spec.ChainName,
-								"--deploy-method", string(bhf.Spec.ChainDeployMethod),
+								"--chain", bhf.Spec.Chain,
+								"--deploy-method", string(bhf.Spec.DeployMethod),
 								"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
-								"--node-list", bhf.Spec.NodeList,
+								"--node", bhf.Spec.Node,
 							},
 							VolumeMounts: volumeMounts,
 						},
@@ -321,7 +321,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 }
 
 func (r *BlockHeightFallbackReconciler) getVolumes(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) ([]corev1.Volume, error) {
-	if bhf.Spec.ChainDeployMethod == chainpkg.Helm {
+	if bhf.Spec.DeployMethod == nodepkg.Helm {
 		pvcName, err := r.getHelmPVC(ctx, bhf)
 		if err != nil {
 			return nil, err
@@ -336,7 +336,7 @@ func (r *BlockHeightFallbackReconciler) getVolumes(ctx context.Context, bhf *cit
 				},
 			},
 		}}, nil
-	} else if bhf.Spec.ChainDeployMethod == chainpkg.PythonOperator {
+	} else if bhf.Spec.DeployMethod == nodepkg.PythonOperator {
 		pvcName, err := r.getPyPVC(ctx, bhf)
 		if err != nil {
 			return nil, err
@@ -350,35 +350,26 @@ func (r *BlockHeightFallbackReconciler) getVolumes(ctx context.Context, bhf *cit
 				},
 			},
 		}}, nil
-	} else if bhf.Spec.ChainDeployMethod == chainpkg.CloudConfig {
-		pvcMap, cmMap, err := r.getCloudConfigVolumes(ctx, bhf)
-		if err != nil {
-			return nil, err
-		}
+	} else if bhf.Spec.DeployMethod == nodepkg.CloudConfig {
+		pvc, cm := r.getCloudConfigVolumes(ctx, bhf)
 		vols := make([]corev1.Volume, 0)
-		//  add pvc
-		for node, pvcName := range pvcMap {
-			vols = append(vols, corev1.Volume{
-				Name: fmt.Sprintf("%s-data", node),
-				VolumeSource: corev1.VolumeSource{
-					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-						ClaimName: pvcName,
-						ReadOnly:  false,
+		vols = append(vols, corev1.Volume{
+			Name: citacloudv1.VolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvc,
+					ReadOnly:  false,
+				},
+			}})
+		vols = append(vols, corev1.Volume{
+			Name: citacloudv1.ConfigName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: cm,
 					},
-				}})
-		}
-		// add configmap
-		for node, cmName := range cmMap {
-			vols = append(vols, corev1.Volume{
-				Name: fmt.Sprintf("%s-config", node),
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: cmName,
-						},
-					},
-				}})
-		}
+				},
+			}})
 		return vols, nil
 	} else {
 		return nil, fmt.Errorf("mismatched deploy method")
@@ -386,38 +377,30 @@ func (r *BlockHeightFallbackReconciler) getVolumes(ctx context.Context, bhf *cit
 }
 
 func (r *BlockHeightFallbackReconciler) getVolumeMounts(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) ([]corev1.VolumeMount, error) {
-	if bhf.Spec.ChainDeployMethod == chainpkg.Helm || bhf.Spec.ChainDeployMethod == chainpkg.PythonOperator {
+	if bhf.Spec.DeployMethod == nodepkg.Helm || bhf.Spec.DeployMethod == nodepkg.PythonOperator {
 		return []corev1.VolumeMount{
 			{
 				Name:      citacloudv1.VolumeName,
 				MountPath: citacloudv1.VolumeMountPath,
 			},
 		}, nil
-	} else if bhf.Spec.ChainDeployMethod == chainpkg.CloudConfig {
-		pvcMap, cmMap, err := r.getCloudConfigVolumes(ctx, bhf)
-		if err != nil {
-			return nil, err
-		}
+	} else if bhf.Spec.DeployMethod == nodepkg.CloudConfig {
 		volumeMounts := make([]corev1.VolumeMount, 0)
-		for node := range pvcMap {
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      fmt.Sprintf("%s-data", node),
-				MountPath: fmt.Sprintf("/%s-data", node),
-			})
-		}
-		for node := range cmMap {
-			volumeMounts = append(volumeMounts, corev1.VolumeMount{
-				Name:      fmt.Sprintf("%s-config", node),
-				MountPath: fmt.Sprintf("/%s-config", node),
-			})
-		}
-		return volumeMounts, err
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      citacloudv1.VolumeName,
+			MountPath: citacloudv1.VolumeMountPath,
+		})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{
+			Name:      citacloudv1.ConfigName,
+			MountPath: citacloudv1.ConfigMountPath,
+		})
+		return volumeMounts, nil
 	}
 	return nil, nil
 }
 
 func labelsForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) map[string]string {
-	return map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.ChainName}
+	return map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.Chain}
 }
 
 func (r *BlockHeightFallbackReconciler) setDefaultSpec(bhf *citacloudv1.BlockHeightFallback) bool {
@@ -444,7 +427,7 @@ func (r *BlockHeightFallbackReconciler) setDefaultStatus(bhf *citacloudv1.BlockH
 func (r *BlockHeightFallbackReconciler) getHelmPVC(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, error) {
 	// find chain's statefuleset
 	sts := &appsv1.StatefulSet{}
-	err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.ChainName, Namespace: bhf.Spec.Namespace}, sts)
+	err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Chain, Namespace: bhf.Spec.Namespace}, sts)
 	if err != nil {
 		return "", err
 	}
@@ -461,7 +444,7 @@ func (r *BlockHeightFallbackReconciler) getPyPVC(ctx context.Context, bhf *citac
 	deployList := &appsv1.DeploymentList{}
 	deployOpts := []client.ListOption{
 		client.InNamespace(bhf.Spec.Namespace),
-		client.MatchingLabels(map[string]string{"chain_name": bhf.Spec.ChainName}),
+		client.MatchingLabels(map[string]string{"chain_name": bhf.Spec.Chain}),
 	}
 	if err := r.List(ctx, deployList, deployOpts...); err != nil {
 		return "", err
@@ -477,30 +460,8 @@ func (r *BlockHeightFallbackReconciler) getPyPVC(ctx context.Context, bhf *citac
 	return "", fmt.Errorf("cann't find pvc name")
 }
 
-func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (map[string]string, map[string]string, error) {
-	pvcMap := make(map[string]string, 0)
-	cmMap := make(map[string]string, 0)
-	if bhf.AllNodes() {
-		stsList := &appsv1.StatefulSetList{}
-		stsOpts := []client.ListOption{
-			client.InNamespace(bhf.Spec.Namespace),
-			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.ChainName}),
-		}
-		if err := r.List(ctx, stsList, stsOpts...); err != nil {
-			return nil, nil, err
-		}
-		for _, sts := range stsList.Items {
-			pvcMap[sts.Name] = fmt.Sprintf("datadir-%s-0", sts.Name)
-			cmMap[sts.Name] = fmt.Sprintf("%s-config", sts.Name)
-		}
-		return pvcMap, cmMap, nil
-	} else {
-		for _, node := range chainpkg.GetNodeList(bhf.Spec.NodeList) {
-			pvcMap[node] = fmt.Sprintf("datadir-%s-0", node)
-			cmMap[node] = fmt.Sprintf("%s-config", node)
-		}
-		return pvcMap, cmMap, nil
-	}
+func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, string) {
+	return fmt.Sprintf("datadir-%s-0", bhf.Spec.Node), fmt.Sprintf("%s-config", bhf.Spec.Node)
 }
 
 // SetupWithManager sets up the controller with the Manager.

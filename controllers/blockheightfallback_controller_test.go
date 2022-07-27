@@ -19,7 +19,7 @@ import (
 	"context"
 	"fmt"
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
-	chainpkg "github.com/cita-cloud/cita-node-operator/pkg/chain"
+	chainpkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
@@ -36,9 +36,8 @@ import (
 // +kubebuilder:docs-gen:collapse=Imports
 
 const (
-	ChainName      = "test-chain"
-	ChainNamespace = "default"
-	//BlockHeightFallbackName      = "blockheightfallback-sample"
+	ChainName                    = "test-chain"
+	ChainNamespace               = "default"
 	BlockHeightFallbackNamespace = "default"
 	BlockHeight                  = 30
 
@@ -49,10 +48,10 @@ const (
 
 var _ = Describe("BlockHeightFallback controller", func() {
 
-	Context("When create BlockHeightFallback for helm chain", func() {
+	Context("When create BlockHeightFallback for helm node", func() {
 
 		const (
-			nodeList                            = "*"
+			node                                = "test-chain-0"
 			BlockHeightFallbackNameForHelmChain = "blockheightfallback-sample-for-helm-chain"
 		)
 
@@ -69,11 +68,11 @@ var _ = Describe("BlockHeightFallback controller", func() {
 					Namespace: BlockHeightFallbackNamespace,
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
-					ChainName:         ChainName,
-					Namespace:         ChainNamespace,
-					BlockHeight:       BlockHeight,
-					ChainDeployMethod: chainpkg.Helm,
-					NodeList:          nodeList,
+					Chain:        ChainName,
+					Namespace:    ChainNamespace,
+					BlockHeight:  BlockHeight,
+					DeployMethod: chainpkg.Helm,
+					Node:         node,
 				},
 			}
 			Expect(k8sClient.Create(ctx, bhf)).Should(Succeed())
@@ -89,7 +88,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				return true
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdBhf.Spec.ChainDeployMethod).Should(Equal(chainpkg.Helm))
+			Expect(createdBhf.Spec.DeployMethod).Should(Equal(chainpkg.Helm))
 
 			By("By checking that a new job has been created")
 			jobLookupKey := types.NamespacedName{Name: BlockHeightFallbackNameForHelmChain, Namespace: BlockHeightFallbackNamespace}
@@ -122,18 +121,18 @@ var _ = Describe("BlockHeightFallback controller", func() {
 			args := []string{
 				"fallback",
 				"--namespace", ChainNamespace,
-				"--chain-name", ChainName,
+				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.Helm),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node-list", nodeList}
+				"--node", node}
 			Expect(container.Args).Should(Equal(args))
 		})
 	})
 
-	Context("When create BlockHeightFallback for python chain", func() {
+	Context("When create BlockHeightFallback for python node", func() {
 
 		const (
-			nodeList                              = "*"
+			node                                  = "test-chain-0"
 			BlockHeightFallbackNameForPythonChain = "blockheightfallback-sample-for-python-chain"
 		)
 
@@ -142,7 +141,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			createPythonChain(ctx)
 
-			By("By creating a new BlockHeightFallback for python chain")
+			By("By creating a new BlockHeightFallback for python node")
 			ctx := context.Background()
 			bhf := &citacloudv1.BlockHeightFallback{
 				ObjectMeta: metav1.ObjectMeta{
@@ -150,11 +149,11 @@ var _ = Describe("BlockHeightFallback controller", func() {
 					Namespace: BlockHeightFallbackNamespace,
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
-					ChainName:         ChainName,
-					Namespace:         ChainNamespace,
-					BlockHeight:       BlockHeight,
-					ChainDeployMethod: chainpkg.PythonOperator,
-					NodeList:          nodeList,
+					Chain:        ChainName,
+					Namespace:    ChainNamespace,
+					BlockHeight:  BlockHeight,
+					DeployMethod: chainpkg.PythonOperator,
+					Node:         node,
 				},
 			}
 			Expect(k8sClient.Create(ctx, bhf)).Should(Succeed())
@@ -170,7 +169,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				return true
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdBhf.Spec.ChainDeployMethod).Should(Equal(chainpkg.PythonOperator))
+			Expect(createdBhf.Spec.DeployMethod).Should(Equal(chainpkg.PythonOperator))
 
 			By("By checking that a new job has been created")
 			jobLookupKey := types.NamespacedName{Name: BlockHeightFallbackNameForPythonChain, Namespace: BlockHeightFallbackNamespace}
@@ -203,19 +202,19 @@ var _ = Describe("BlockHeightFallback controller", func() {
 			args := []string{
 				"fallback",
 				"--namespace", ChainNamespace,
-				"--chain-name", ChainName,
+				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.PythonOperator),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node-list", nodeList}
+				"--node", node}
 			Expect(container.Args).Should(Equal(args))
 
 		})
 	})
 
-	Context("When create BlockHeightFallback for cita-cloud chain", func() {
+	Context("When create BlockHeightFallback for cita-cloud node", func() {
 
 		const (
-			nodeList                                 = "*"
+			node                                     = "test-chain-0"
 			BlockHeightFallbackNameForCitaCloudChain = "blockheightfallback-sample-for-cita-cloud-chain"
 		)
 
@@ -224,7 +223,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 			createCloudConfigChain(ctx)
 
-			By("By creating a new BlockHeightFallback for cita-cloud chain")
+			By("By creating a new BlockHeightFallback for cita-cloud node")
 			ctx := context.Background()
 			bhf := &citacloudv1.BlockHeightFallback{
 				ObjectMeta: metav1.ObjectMeta{
@@ -232,11 +231,11 @@ var _ = Describe("BlockHeightFallback controller", func() {
 					Namespace: BlockHeightFallbackNamespace,
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
-					ChainName:         ChainName,
-					Namespace:         ChainNamespace,
-					BlockHeight:       BlockHeight,
-					ChainDeployMethod: chainpkg.CloudConfig,
-					NodeList:          nodeList,
+					Chain:        ChainName,
+					Namespace:    ChainNamespace,
+					BlockHeight:  BlockHeight,
+					DeployMethod: chainpkg.CloudConfig,
+					Node:         node,
 				},
 			}
 			Expect(k8sClient.Create(ctx, bhf)).Should(Succeed())
@@ -252,7 +251,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				return true
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdBhf.Spec.ChainDeployMethod).Should(Equal(chainpkg.CloudConfig))
+			Expect(createdBhf.Spec.DeployMethod).Should(Equal(chainpkg.CloudConfig))
 
 			By("By checking that a new job has been created")
 			jobLookupKey := types.NamespacedName{Name: BlockHeightFallbackNameForCitaCloudChain, Namespace: BlockHeightFallbackNamespace}
@@ -285,15 +284,15 @@ var _ = Describe("BlockHeightFallback controller", func() {
 			args := []string{
 				"fallback",
 				"--namespace", ChainNamespace,
-				"--chain-name", ChainName,
+				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.CloudConfig),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node-list", nodeList}
+				"--node", node}
 			Expect(container.Args).Should(Equal(args))
 		})
 	})
 
-	Context("When create BlockHeightFallback specify one node for python chain", func() {
+	Context("When create BlockHeightFallback specify one node for python node", func() {
 		oneNode := fmt.Sprintf("%s-3", ChainName)
 		const (
 			BlockHeightFallbackNameOneNodeForPythonChain = "blockheightfallback-sample-one-node-for-python-chain"
@@ -301,7 +300,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 
 		It("Should create a Job by controller", func() {
 
-			By("By creating a new BlockHeightFallback for python chain")
+			By("By creating a new BlockHeightFallback for python node")
 			ctx := context.Background()
 			bhf := &citacloudv1.BlockHeightFallback{
 				ObjectMeta: metav1.ObjectMeta{
@@ -309,11 +308,11 @@ var _ = Describe("BlockHeightFallback controller", func() {
 					Namespace: BlockHeightFallbackNamespace,
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
-					ChainName:         ChainName,
-					Namespace:         ChainNamespace,
-					BlockHeight:       BlockHeight,
-					ChainDeployMethod: chainpkg.PythonOperator,
-					NodeList:          oneNode,
+					Chain:        ChainName,
+					Namespace:    ChainNamespace,
+					BlockHeight:  BlockHeight,
+					DeployMethod: chainpkg.PythonOperator,
+					Node:         oneNode,
 				},
 			}
 			Expect(k8sClient.Create(ctx, bhf)).Should(Succeed())
@@ -329,7 +328,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				return true
 			}, timeout, interval).Should(BeTrue())
 
-			Expect(createdBhf.Spec.ChainDeployMethod).Should(Equal(chainpkg.PythonOperator))
+			Expect(createdBhf.Spec.DeployMethod).Should(Equal(chainpkg.PythonOperator))
 
 			By("By checking that a new job has been created")
 			jobLookupKey := types.NamespacedName{Name: BlockHeightFallbackNameOneNodeForPythonChain, Namespace: BlockHeightFallbackNamespace}
@@ -362,88 +361,10 @@ var _ = Describe("BlockHeightFallback controller", func() {
 			args := []string{
 				"fallback",
 				"--namespace", ChainNamespace,
-				"--chain-name", ChainName,
+				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.PythonOperator),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node-list", oneNode}
-			Expect(container.Args).Should(Equal(args))
-		})
-	})
-
-	Context("When create BlockHeightFallback specify two node for cita-cloud chain", func() {
-
-		twoNode := fmt.Sprintf("%s-1,%s-3", ChainName, ChainName)
-		const (
-			BlockHeightFallbackNameTwoNodeForPythonChain = "blockheightfallback-sample-two-node-for-python-chain"
-		)
-
-		It("Should create a Job by controller", func() {
-
-			By("By creating a new BlockHeightFallback for cita-cloud chain")
-			ctx := context.Background()
-			bhf := &citacloudv1.BlockHeightFallback{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      BlockHeightFallbackNameTwoNodeForPythonChain,
-					Namespace: BlockHeightFallbackNamespace,
-				},
-				Spec: citacloudv1.BlockHeightFallbackSpec{
-					ChainName:         ChainName,
-					Namespace:         ChainNamespace,
-					BlockHeight:       BlockHeight,
-					ChainDeployMethod: chainpkg.CloudConfig,
-					NodeList:          twoNode,
-				},
-			}
-			Expect(k8sClient.Create(ctx, bhf)).Should(Succeed())
-
-			bhfLookupKey := types.NamespacedName{Name: BlockHeightFallbackNameTwoNodeForPythonChain, Namespace: BlockHeightFallbackNamespace}
-			createdBhf := &citacloudv1.BlockHeightFallback{}
-
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, bhfLookupKey, createdBhf)
-				if err != nil {
-					return false
-				}
-				return true
-			}, timeout, interval).Should(BeTrue())
-
-			Expect(createdBhf.Spec.ChainDeployMethod).Should(Equal(chainpkg.CloudConfig))
-
-			By("By checking that a new job has been created")
-			jobLookupKey := types.NamespacedName{Name: BlockHeightFallbackNameTwoNodeForPythonChain, Namespace: BlockHeightFallbackNamespace}
-			createdJob := &v1.Job{}
-			Eventually(func() bool {
-				err := k8sClient.Get(ctx, jobLookupKey, createdJob)
-				if err != nil {
-					return false
-				}
-				return true
-			}, timeout, interval).Should(BeTrue())
-
-			By("By checking that job volumes")
-
-			volumes, err := bhfReconciler.getVolumes(ctx, createdBhf)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(len(createdJob.Spec.Template.Spec.Volumes)).Should(Equal(len(volumes)))
-
-			By("By checking that job volumeMounts")
-
-			Expect(1).Should(Equal(len(createdJob.Spec.Template.Spec.Containers)))
-
-			mounts, err := bhfReconciler.getVolumeMounts(ctx, createdBhf)
-			Expect(err).NotTo(HaveOccurred())
-
-			container := createdJob.Spec.Template.Spec.Containers[0]
-			Expect(len(container.VolumeMounts)).Should(Equal(len(mounts)))
-
-			By("By checking that job container parameters")
-			args := []string{
-				"fallback",
-				"--namespace", ChainNamespace,
-				"--chain-name", ChainName,
-				"--deploy-method", string(chainpkg.CloudConfig),
-				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node-list", twoNode}
+				"--node", oneNode}
 			Expect(container.Args).Should(Equal(args))
 		})
 	})

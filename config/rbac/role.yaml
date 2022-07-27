@@ -8,6 +8,32 @@ rules:
 - apiGroups:
   - citacloud.rivtower.com
   resources:
+  - backups
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - backups/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - backups/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
   - blockheightfallbacks
   verbs:
   - create
@@ -53,6 +79,32 @@ rules:
   - citacloud.rivtower.com
   resources:
   - citanodes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - restores
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - restores/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - restores/status
   verbs:
   - get
   - patch

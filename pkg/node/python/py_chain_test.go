@@ -19,44 +19,77 @@ package python
 import (
 	"context"
 	"fmt"
-	chain2 "github.com/cita-cloud/cita-node-operator/pkg/chain"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/exec"
+	fakeexec "k8s.io/utils/exec/testing"
 	"time"
 )
 
 const (
 	ChainName      = "test-chain"
+	NodeName       = "test-chain-1"
 	ChainNamespace = "default"
 	timeout        = time.Second * 10
 	duration       = time.Second * 10
 	interval       = time.Millisecond * 250
 )
 
-var _ = Describe("Fallback for python chain", func() {
-	Context("Exec fallback for python chain", func() {
+var _ = Describe("Fallback for python node", func() {
+	Context("Exec fallback for python node", func() {
 		It("Should fallback to specified block height", func() {
-			By("Prepare a python chain")
+			By("Prepare a python node")
 			createPythonChain(ctx)
 
-			By("Create python chain fallback interface")
-			chain, err := chain2.CreateChain(chain2.PythonOperator, ChainNamespace, ChainName, k8sClient, "*")
+			By("Create python node fallback interface")
+
+			fcmd := fakeexec.FakeCmd{
+				RunScript: []fakeexec.FakeAction{
+					// Success.
+					func() ([]byte, []byte, error) { return nil, nil, nil },
+				},
+			}
+			fexec := fakeexec.FakeExec{
+				CommandScript: []fakeexec.FakeCommandAction{
+					func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
+				},
+			}
+
+			chain, err := nodepkg.CreateNode(nodepkg.PythonOperator, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
 			err = chain.Fallback(ctx, 100)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("Should fallback to specified block height", func() {
+		It("Should backup node data", func() {
 
-			By("Create python chain fallback interface")
-			chain, err := chain2.CreateChain(chain2.PythonOperator, ChainNamespace, ChainName, k8sClient, fmt.Sprintf("%s-3", ChainName))
+			By("Create python node backup interface")
+
+			fcmd := fakeexec.FakeCmd{
+				RunScript: []fakeexec.FakeAction{
+					// Success.
+					func() ([]byte, []byte, error) { return nil, nil, nil },
+					// Failure.
+					//func() ([]byte, []byte, error) { return nil, nil, &fakeexec.FakeExitError{Status: 1} },
+				},
+			}
+			fexec := fakeexec.FakeExec{
+				CommandScript: []fakeexec.FakeCommandAction{
+					func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
+					//func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
+				},
+			}
+
+			chain, err := nodepkg.CreateNode(nodepkg.PythonOperator, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
-			err = chain.Fallback(ctx, 100)
+			err = chain.Backup(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
 	})
 })
 

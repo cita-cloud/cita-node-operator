@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"context"
-	chainpkg "github.com/cita-cloud/cita-node-operator/pkg/chain"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
+	"k8s.io/utils/exec"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
@@ -12,14 +13,18 @@ import (
 )
 
 var (
-	namespace    string
-	chainName    string
-	deployMethod string
-	blockHeight  int64
-	nodeList     string
-
 	setupLog = ctrl.Log.WithName("setup")
 )
+
+type Fallback struct {
+	namespace    string
+	node         string
+	chain        string
+	deployMethod string
+	blockHeight  int64
+}
+
+var fallback = Fallback{}
 
 func NewFallbackCommand() *cobra.Command {
 	cc := &cobra.Command{
@@ -27,11 +32,11 @@ func NewFallbackCommand() *cobra.Command {
 		Short: "Execute fallback for chain nodes",
 		Run:   fallBackFunc,
 	}
-	cc.Flags().StringVarP(&namespace, "namespace", "n", "default", "The chain's node of namespace.")
-	cc.Flags().StringVarP(&chainName, "chain-name", "c", "test-chain", "The chain name this node belongs to.")
-	cc.Flags().StringVarP(&deployMethod, "deploy-method", "d", "helm", "The chain of deploy method.")
-	cc.Flags().Int64VarP(&blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
-	cc.Flags().StringVarP(&nodeList, "node-list", "l", "*", "The node or nodes that you want to fallback, like: node1,node2; If all, you can set *.")
+	cc.Flags().StringVarP(&fallback.namespace, "namespace", "n", "default", "The node's node of namespace.")
+	cc.Flags().StringVarP(&fallback.node, "node", "", "", "The node that you want to fallback.")
+	cc.Flags().StringVarP(&fallback.chain, "chain", "c", "test-chain", "The node name this node belongs to.")
+	cc.Flags().StringVarP(&fallback.deployMethod, "deploy-method", "d", "helm", "The node of deploy method.")
+	cc.Flags().Int64VarP(&fallback.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
 	return cc
 }
 
@@ -42,27 +47,27 @@ func fallBackFunc(cmd *cobra.Command, args []string) {
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	k8sClient, err := chainpkg.InitK8sClient()
+	k8sClient, err := nodepkg.InitK8sClient()
 	if err != nil {
 		setupLog.Error(err, "unable to init k8s client")
 		os.Exit(1)
 	}
 
-	var dm chainpkg.DeployMethod
-	switch deployMethod {
-	case string(chainpkg.Helm):
-		dm = chainpkg.Helm
-	case string(chainpkg.PythonOperator):
-		dm = chainpkg.PythonOperator
-	case string(chainpkg.CloudConfig):
-		dm = chainpkg.CloudConfig
+	var dm nodepkg.DeployMethod
+	switch fallback.deployMethod {
+	case string(nodepkg.Helm):
+		dm = nodepkg.Helm
+	case string(nodepkg.PythonOperator):
+		dm = nodepkg.PythonOperator
+	case string(nodepkg.CloudConfig):
+		dm = nodepkg.CloudConfig
 	}
-	chain, err := chainpkg.CreateChain(dm, namespace, chainName, k8sClient, nodeList)
+	chain, err := nodepkg.CreateNode(dm, fallback.namespace, fallback.node, k8sClient, fallback.chain, exec.New())
 	if err != nil {
-		setupLog.Error(err, "unable to init chain")
+		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = chain.Fallback(context.Background(), blockHeight)
+	err = chain.Fallback(context.Background(), fallback.blockHeight)
 	if err != nil {
 		setupLog.Error(err, "exec block height fallback failed")
 		os.Exit(1)

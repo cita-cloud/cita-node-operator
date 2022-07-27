@@ -17,7 +17,7 @@ limitations under the License.
 package v1
 
 import (
-	"github.com/cita-cloud/cita-node-operator/pkg/node"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,63 +25,66 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// BlockHeightFallbackSpec defines the desired state of BlockHeightFallback
-type BlockHeightFallbackSpec struct {
+// BackupSpec defines the desired state of Backup
+type BackupSpec struct {
 	// Chain
 	Chain string `json:"chain"`
 	// Namespace
 	Namespace string `json:"namespace"`
 	// Node
 	Node string `json:"node"`
-	// BlockHeight
-	BlockHeight int64 `json:"blockHeight"`
 	// DeployMethod
-	DeployMethod node.DeployMethod `json:"deployMethod"`
+	DeployMethod nodepkg.DeployMethod `json:"deployMethod"`
+	// StorageClass
+	StorageClass string `json:"storageClass,omitempty"`
 	// Image
 	Image string `json:"image,omitempty"`
 	// PullPolicy
 	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
 }
 
-// BlockHeightFallbackStatus defines the observed state of BlockHeightFallback
-type BlockHeightFallbackStatus struct {
+// BackupStatus defines the observed state of Backup
+type BackupStatus struct {
+	// Allocate
+	Allocate int64 `json:"allocate,omitempty"`
+	// Actual
+	Actual int64 `json:"actual,omitempty"`
+	// Status
+	Status JobConditionType `json:"status,omitempty"`
 	// StartTime
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 	// EndTime
 	EndTime *metav1.Time `json:"endTime,omitempty"`
-	// Status
-	Status JobConditionType `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=bhf
 
-// BlockHeightFallback is the Schema for the blockheightfallbacks API
-type BlockHeightFallback struct {
+// Backup is the Schema for the backups API
+type Backup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BlockHeightFallbackSpec   `json:"spec,omitempty"`
-	Status BlockHeightFallbackStatus `json:"status,omitempty"`
+	Spec   BackupSpec   `json:"spec,omitempty"`
+	Status BackupStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// BlockHeightFallbackList contains a list of BlockHeightFallback
-type BlockHeightFallbackList struct {
+// BackupList contains a list of Backup
+type BackupList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []BlockHeightFallback `json:"items"`
+	Items           []Backup `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&BlockHeightFallback{}, &BlockHeightFallbackList{})
+	SchemeBuilder.Register(&Backup{}, &BackupList{})
 }
 
 const (
-	ConfigName      = "cita-config"
-	ConfigMountPath = "/cita-config"
-	VolumeName      = "datadir"
-	VolumeMountPath = "/mnt"
+	BackupSourceVolumeName = "backup-source"
+	BackupSourceVolumePath = "/backup-source"
+	BackupDestVolumeName   = "backup-dest"
+	BackupDestVolumePath   = "/backup-dest"
 )
