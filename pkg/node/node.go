@@ -45,5 +45,5 @@ type Node interface {
 	Fallback(ctx context.Context, blockHeight int64) error
 	Start(ctx context.Context) error
 	Backup(ctx context.Context) error
-	Restore(ctx context.Context) error
+	Restore(ctx context.Context, action Action) error
 }

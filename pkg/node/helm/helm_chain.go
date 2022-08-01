@@ -19,6 +19,7 @@ package helm
 import (
 	"context"
 	"fmt"
+	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,9 +44,35 @@ type helmNode struct {
 	execer    exec.Interface
 }
 
-func (h *helmNode) Restore(ctx context.Context) error {
-	//TODO implement me
-	panic("implement me")
+func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
+	if action == node.StopAndStart {
+		if err := h.Stop(ctx); err != nil {
+			return err
+		}
+		if err := h.CheckStopped(ctx); err != nil {
+			return err
+		}
+	}
+	if err := h.restore(); err != nil {
+		return err
+	}
+	if action == node.StopAndStart {
+		if err := h.Start(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (h *helmNode) restore() error {
+	err := h.execer.Command("cp", "-r", citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, h.name)).Run()
+	if err != nil {
+		helmNodeLog.Error(err, "restore file failed")
+		return err
+	}
+
+	helmNodeLog.Info("restore file completed")
+	return nil
 }
 
 // Stop Since it is a chain composed of statefulsets, the entire chain must be stopped.

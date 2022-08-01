@@ -22,12 +22,15 @@ import (
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"time"
 )
 
@@ -43,24 +46,24 @@ type pyNode struct {
 	execer    exec.Interface
 }
 
-func (p *pyNode) Restore(ctx context.Context) error {
-	err := p.Stop(ctx)
-	if err != nil {
+func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
+	if action == node.StopAndStart {
+		if err := p.Stop(ctx); err != nil {
+			return err
+		}
+		if err := p.CheckStopped(ctx); err != nil {
+			return err
+		}
+	}
+	if err := p.restore(); err != nil {
 		return err
 	}
-	err = p.CheckStopped(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := p.Start(ctx); err != nil {
+			return err
+		}
 	}
-	err = p.restore()
-	if err != nil {
-		return err
-	}
-	err = p.Start(ctx)
-	if err != nil {
-		return err
-	}
-	return err
+	return nil
 }
 
 func (p *pyNode) restore() error {
@@ -87,6 +90,16 @@ func (p *pyNode) Backup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	size, err := p.calculateSize()
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{"backup-size": size}
+	err = p.AddAnnotations(ctx, annotations)
+	if err != nil {
+		return err
+	}
 	err = p.Start(ctx)
 	if err != nil {
 		return err
@@ -100,9 +113,39 @@ func (p *pyNode) backup() error {
 		pyNodeLog.Error(err, "copy file failed")
 		return err
 	}
-	// calculate size
-
 	pyNodeLog.Info("copy file completed")
+	return nil
+}
+
+func (p *pyNode) calculateSize() (string, error) {
+	// calculate size
+	usageByte, err := p.execer.Command("du", "-sb", citacloudv1.BackupDestVolumePath).CombinedOutput()
+	if err != nil {
+		pyNodeLog.Info("calculate backup size failed")
+		return "", err
+	}
+	usageStr := strings.Split(string(usageByte), "\t")
+	pyNodeLog.Info(fmt.Sprintf("calculate backup size success: [%s]", usageStr[0]))
+	return usageStr[0], nil
+}
+
+func (p *pyNode) AddAnnotations(ctx context.Context, annotations map[string]string) error {
+	pod := &corev1.Pod{}
+	err := p.Get(ctx, types.NamespacedName{
+		Name:      os.Getenv("MY_POD_NAME"),
+		Namespace: os.Getenv("MY_POD_NAMESPACE"),
+	}, pod)
+	if err != nil {
+		pyNodeLog.Error(err, fmt.Sprintf("get pod %s/%s failed", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+		return err
+	}
+	pod.Annotations = annotations
+	err = p.Update(ctx, pod)
+	if err != nil {
+		pyNodeLog.Error(err, fmt.Sprintf("update pod %s/%s annotation failed", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+		return err
+	}
+	pyNodeLog.Info(fmt.Sprintf("update pod %s/%s annotation successful", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
 	return nil
 }
 

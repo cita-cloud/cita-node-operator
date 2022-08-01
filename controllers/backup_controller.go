@@ -32,6 +32,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 )
@@ -153,7 +154,7 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	foundJob := &v1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: backup.Name, Namespace: backup.Namespace}, foundJob)
 	if err != nil && errors.IsNotFound(err) {
-		// Define a new deployment
+		// Define a new job
 		job, err := r.jobForBackup(ctx, backup)
 		if err != nil {
 			logger.Error(err, "generate job resource failed")
@@ -165,7 +166,7 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			logger.Error(err, "failed to create new Job")
 			return ctrl.Result{}, err
 		}
-		// Deployment created successfully - return and requeue
+		// Job created successfully - return and requeue
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {
 		logger.Error(err, "failed to get job")
@@ -173,6 +174,53 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	// todo
+	job := &v1.Job{}
+	err = r.Get(ctx, req.NamespacedName, job)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("failed to get job %s/%s", backup.Namespace, backup.Name))
+		return ctrl.Result{}, err
+	}
+	cur := backup.DeepCopy()
+	if job.Status.Active == 1 {
+		cur.Status.Status = citacloudv1.JobActive
+	} else if job.Status.Failed == 1 {
+		cur.Status.Status = citacloudv1.JobFailed
+		endTime := job.Status.Conditions[0].LastTransitionTime
+		cur.Status.EndTime = &endTime
+	} else if job.Status.Succeeded == 1 {
+		cur.Status.Status = citacloudv1.JobComplete
+		// get backup size from pod annotations
+		podList := &corev1.PodList{}
+		podOpts := []client.ListOption{
+			client.InNamespace(backup.Spec.Namespace),
+			client.MatchingLabels(map[string]string{"job-name": backup.Name, "controller-uid": string(job.UID)}),
+		}
+		if err := r.List(ctx, podList, podOpts...); err != nil {
+			return ctrl.Result{}, err
+		}
+		if len(podList.Items) != 1 {
+			logger.Error(err, fmt.Sprintf("job's pod != 1"))
+			return ctrl.Result{}, err
+		}
+		backupSizeStr := podList.Items[0].Annotations["backup-size"]
+		backupSize, err := strconv.ParseInt(backupSizeStr, 10, 64)
+		if err != nil {
+			logger.Error(err, "parse backup size from string to int64 failed")
+			return ctrl.Result{}, err
+		}
+		cur.Status.Actual = backupSize
+		cur.Status.EndTime = job.Status.CompletionTime
+	}
+	if !IsEqual(cur, backup) {
+		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
+		err := r.Status().Update(ctx, cur)
+		if err != nil {
+			logger.Error(err, "update status failed")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -193,6 +241,11 @@ func (r *BackupReconciler) setDefaultStatus(backup *citacloudv1.Backup) bool {
 	updateFlag := false
 	if backup.Status.Status == "" {
 		backup.Status.Status = citacloudv1.JobActive
+		updateFlag = true
+	}
+	if backup.Status.StartTime == nil {
+		startTime := backup.CreationTimestamp
+		backup.Status.StartTime = &startTime
 		updateFlag = true
 	}
 	return updateFlag
@@ -219,6 +272,11 @@ func (r *BackupReconciler) clusterRoleForBlockHeightFallback() *rbacv1.ClusterRo
 		APIGroups: []string{"apps"},
 		Resources: []string{"deployments"},
 	}
+	podPR := rbacv1.PolicyRule{
+		Verbs:     []string{"get", "list", "watch", "update"},
+		APIGroups: []string{""},
+		Resources: []string{"pods"},
+	}
 
 	clusterRole := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -227,6 +285,7 @@ func (r *BackupReconciler) clusterRoleForBlockHeightFallback() *rbacv1.ClusterRo
 		Rules: []rbacv1.PolicyRule{
 			stsPR,
 			depPR,
+			podPR,
 		},
 	}
 	return clusterRole
@@ -388,6 +447,24 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 								{
 									Name:      citacloudv1.BackupDestVolumeName,
 									MountPath: citacloudv1.BackupDestVolumePath,
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: "MY_POD_NAME",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: "MY_POD_NAMESPACE",
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
 								},
 							},
 						},

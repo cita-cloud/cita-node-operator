@@ -154,7 +154,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 	foundJob := &v1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: bhf.Name, Namespace: bhf.Namespace}, foundJob)
 	if err != nil && errors.IsNotFound(err) {
-		// Define a new deployment
+		// Define a new job
 		job, err := r.jobForBlockHeightFallback(ctx, bhf)
 		if err != nil {
 			logger.Error(err, "generate job resource failed")
@@ -166,7 +166,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 			logger.Error(err, "failed to create new Job")
 			return ctrl.Result{}, err
 		}
-		// Deployment created successfully - return and requeue
+		// Job created successfully - return and requeue
 		return ctrl.Result{Requeue: true}, nil
 	} else if err != nil {
 		logger.Error(err, "failed to get job")

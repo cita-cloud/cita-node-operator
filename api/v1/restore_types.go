@@ -37,6 +37,8 @@ type RestoreSpec struct {
 	DeployMethod nodepkg.DeployMethod `json:"deployMethod"`
 	// Backup
 	Backup string `json:"backup"`
+	// Action
+	Action nodepkg.Action `json:"action,omitempty"`
 	// Image
 	Image string `json:"image,omitempty"`
 	// PullPolicy

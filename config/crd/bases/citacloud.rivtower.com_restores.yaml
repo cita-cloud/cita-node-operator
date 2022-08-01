@@ -35,6 +35,9 @@ spec:
           spec:
             description: RestoreSpec defines the desired state of Restore
             properties:
+              action:
+                description: Action
+                type: string
               backup:
                 description: Backup
                 type: string

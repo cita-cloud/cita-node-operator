@@ -24,7 +24,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
-	exec "k8s.io/utils/exec"
+	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,29 +43,28 @@ type cloudConfigNode struct {
 	execer    exec.Interface
 }
 
-func (c *cloudConfigNode) Restore(ctx context.Context) error {
-	err := c.Stop(ctx)
-	if err != nil {
+func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error {
+	if action == node.StopAndStart {
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+		if err := c.CheckStopped(ctx); err != nil {
+			return err
+		}
+	}
+	if err := c.restore(); err != nil {
 		return err
 	}
-	err = c.CheckStopped(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := c.Start(ctx); err != nil {
+			return err
+		}
 	}
-	err = c.restore()
-	if err != nil {
-		return err
-	}
-	err = c.Start(ctx)
-	if err != nil {
-		return err
-	}
-	return err
+	return nil
 }
 
 func (c *cloudConfigNode) restore() error {
-	//exec := utilexec.New()
-	err := c.execer.Command("cp", "-r", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath).Run()
+	err := c.execer.Command("cp", "-rf", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath).Run()
 	if err != nil {
 		cloudConfigNodeLog.Error(err, "restore file failed")
 		return err

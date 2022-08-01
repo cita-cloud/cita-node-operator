@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
@@ -16,6 +17,7 @@ type Restore struct {
 	chain        string
 	node         string
 	deployMethod string
+	action       string
 }
 
 var restore = Restore{}
@@ -30,6 +32,7 @@ func NewRestore() *cobra.Command {
 	cc.Flags().StringVarP(&restore.chain, "chain", "c", "test-node", "The node name this node belongs to.")
 	cc.Flags().StringVarP(&restore.node, "node", "", "", "The node that you want to restore.")
 	cc.Flags().StringVarP(&restore.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
+	cc.Flags().StringVarP(&restore.action, "action", "a", "StopAndStart", "The action when node restore.")
 	return cc
 }
 
@@ -54,6 +57,20 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 		dm = nodepkg.PythonOperator
 	case string(nodepkg.CloudConfig):
 		dm = nodepkg.CloudConfig
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for deploy method"), "invalid parameter for deploy method")
+		os.Exit(1)
+	}
+
+	var action nodepkg.Action
+	switch restore.action {
+	case string(nodepkg.StopAndStart):
+		action = nodepkg.StopAndStart
+	case string(nodepkg.Direct):
+		action = nodepkg.Direct
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for action"), "invalid parameter for action")
+		os.Exit(1)
 	}
 
 	node, err := nodepkg.CreateNode(dm, restore.namespace, restore.node, k8sClient, restore.chain, exec.New())
@@ -61,7 +78,7 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = node.Restore(context.Background())
+	err = node.Restore(context.Background(), action)
 	if err != nil {
 		setupLog.Error(err, "exec restore failed")
 		os.Exit(1)

@@ -35,7 +35,7 @@ func NewFallbackCommand() *cobra.Command {
 	cc.Flags().StringVarP(&fallback.namespace, "namespace", "n", "default", "The node's node of namespace.")
 	cc.Flags().StringVarP(&fallback.node, "node", "", "", "The node that you want to fallback.")
 	cc.Flags().StringVarP(&fallback.chain, "chain", "c", "test-chain", "The node name this node belongs to.")
-	cc.Flags().StringVarP(&fallback.deployMethod, "deploy-method", "d", "helm", "The node of deploy method.")
+	cc.Flags().StringVarP(&fallback.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
 	cc.Flags().Int64VarP(&fallback.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
 	return cc
 }

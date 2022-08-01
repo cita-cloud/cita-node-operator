@@ -139,7 +139,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 		It("Should create a Job by controller", func() {
 			By("Prepare a python chain")
 
-			createPythonChain(ctx)
+			createPythonChain(ctx, ChainName, false)
 
 			By("By creating a new BlockHeightFallback for python node")
 			ctx := context.Background()
@@ -405,13 +405,31 @@ func createHelmChain(ctx context.Context) {
 	Expect(k8sClient.Create(ctx, sts)).Should(Succeed())
 }
 
-func createPythonChain(ctx context.Context) {
+func createPythonChain(ctx context.Context, chainName string, create bool) {
+	// create pvc
+	if create {
+		localPVC := &corev1.PersistentVolumeClaim{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "local-pvc",
+				Namespace: ChainNamespace,
+			},
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources: corev1.ResourceRequirements{
+					Requests: map[corev1.ResourceName]resource.Quantity{corev1.ResourceStorage: *resource.NewQuantity(5*1024*1024*1024, resource.BinarySI)},
+				},
+				StorageClassName: pointer.String("nfs-csi"),
+			},
+		}
+		Expect(k8sClient.Create(ctx, localPVC)).Should(Succeed())
+	}
+
 	for i := 0; i < 4; i++ {
 		dep := &appsv1.Deployment{}
-		dep.Name = fmt.Sprintf("%s-%d", ChainName, i)
+		dep.Name = fmt.Sprintf("%s-%d", chainName, i)
 		dep.Namespace = ChainNamespace
 
-		labels := map[string]string{"chain_name": ChainName}
+		labels := map[string]string{"chain_name": chainName, "node_name": fmt.Sprintf("%s-%d", chainName, i)}
 		dep.Labels = labels
 
 		dep.Spec = appsv1.DeploymentSpec{

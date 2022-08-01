@@ -23,3 +23,10 @@ const (
 	Helm           DeployMethod = "helm"
 	CloudConfig    DeployMethod = "cloud-config"
 )
+
+type Action string
+
+const (
+	StopAndStart Action = "StopAndStart"
+	Direct       Action = "Direct"
+)

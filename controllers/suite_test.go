@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"testing"
@@ -45,6 +46,7 @@ var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
 var bhfReconciler *BlockHeightFallbackReconciler
+var backupReconciler *BackupReconciler
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -55,6 +57,10 @@ func TestAPIs(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
+	Expect(os.Setenv("TEST_ASSET_KUBE_APISERVER", "/Users/zhujianqiang/Library/Application Support/io.kubebuilder.envtest/k8s/1.23.5-darwin-amd64/kube-apiserver")).To(Succeed())
+	Expect(os.Setenv("TEST_ASSET_ETCD", "/Users/zhujianqiang/Library/Application Support/io.kubebuilder.envtest/k8s/1.23.5-darwin-amd64/etcd")).To(Succeed())
+	Expect(os.Setenv("TEST_ASSET_KUBECTL", "/Users/zhujianqiang/Library/Application Support/io.kubebuilder.envtest/k8s/1.23.5-darwin-amd64/kubectl")).To(Succeed())
+
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
 	ctx, cancel = context.WithCancel(context.TODO())
@@ -87,6 +93,10 @@ var _ = BeforeSuite(func() {
 	err = bhfReconciler.SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
+	backupReconciler = &BackupReconciler{Client: k8sManager.GetClient(), Scheme: k8sManager.GetScheme()}
+	err = backupReconciler.SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
 	go func() {
 		defer GinkgoRecover()
 		err = k8sManager.Start(ctx)
@@ -100,4 +110,8 @@ var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
+
+	Expect(os.Unsetenv("TEST_ASSET_KUBE_APISERVER")).To(Succeed())
+	Expect(os.Unsetenv("TEST_ASSET_ETCD")).To(Succeed())
+	Expect(os.Unsetenv("TEST_ASSET_KUBECTL")).To(Succeed())
 })

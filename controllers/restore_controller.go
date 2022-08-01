@@ -25,10 +25,9 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -161,7 +160,7 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	err = r.Get(ctx, types.NamespacedName{Name: restore.Name, Namespace: restore.Namespace}, foundJob)
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
-		job, err := r.jobForBackup(ctx, restore)
+		job, err := r.jobForRestore(ctx, restore)
 		if err != nil {
 			logger.Error(err, "generate job resource failed")
 			return ctrl.Result{}, err
@@ -179,11 +178,43 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	// todo
+	job := &v1.Job{}
+	err = r.Get(ctx, req.NamespacedName, job)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("failed to get job %s/%s", restore.Namespace, restore.Name))
+		return ctrl.Result{}, err
+	}
+	cur := restore.DeepCopy()
+	if job.Status.Active == 1 {
+		cur.Status.Status = citacloudv1.JobActive
+	} else if job.Status.Failed == 1 {
+		cur.Status.Status = citacloudv1.JobFailed
+		endTime := job.Status.Conditions[0].LastTransitionTime
+		cur.Status.EndTime = &endTime
+	} else if job.Status.Succeeded == 1 {
+		cur.Status.Status = citacloudv1.JobComplete
+		cur.Status.EndTime = job.Status.CompletionTime
+	}
+	if !IsEqual(cur, restore) {
+		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
+		err := r.Status().Update(ctx, cur)
+		if err != nil {
+			logger.Error(err, "update status failed")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
 func (r *RestoreReconciler) setDefaultSpec(restore *citacloudv1.Restore) bool {
 	updateFlag := false
+	if restore.Spec.Action == "" {
+		restore.Spec.Action = nodepkg.StopAndStart
+		updateFlag = true
+	}
 	if restore.Spec.Image == "" {
 		restore.Spec.Image = citacloudv1.DefaultImage
 		updateFlag = true
@@ -199,6 +230,11 @@ func (r *RestoreReconciler) setDefaultStatus(restore *citacloudv1.Restore) bool 
 	updateFlag := false
 	if restore.Status.Status == "" {
 		restore.Status.Status = citacloudv1.JobActive
+		updateFlag = true
+	}
+	if restore.Status.StartTime == nil {
+		startTime := restore.CreationTimestamp
+		restore.Status.StartTime = &startTime
 		updateFlag = true
 	}
 	return updateFlag
@@ -259,7 +295,7 @@ func (r *RestoreReconciler) clusterRoleBindingForBlockHeightFallback(restore *ci
 	return clusterRoleBinding
 }
 
-func (r *RestoreReconciler) jobForBackup(ctx context.Context, restore *citacloudv1.Restore) (*v1.Job, error) {
+func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citacloudv1.Restore) (*v1.Job, error) {
 	labels := labelsForRestore(restore)
 
 	var pvcDestName string
@@ -321,6 +357,7 @@ func (r *RestoreReconciler) jobForBackup(ctx context.Context, restore *citacloud
 								"--node", restore.Spec.Chain,
 								"--node", restore.Spec.Node,
 								"--deploy-method", string(restore.Spec.DeployMethod),
+								"--action", string(restore.Spec.Action),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
