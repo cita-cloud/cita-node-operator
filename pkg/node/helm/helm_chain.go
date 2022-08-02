@@ -170,7 +170,7 @@ func (h *helmNode) Start(ctx context.Context) error {
 	return nil
 }
 
-func (h *helmNode) Backup(ctx context.Context) error {
+func (h *helmNode) Backup(ctx context.Context, action node.Action) error {
 	//TODO implement me
 	panic("implement me")
 }

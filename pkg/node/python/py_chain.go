@@ -67,7 +67,7 @@ func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 }
 
 func (p *pyNode) restore() error {
-	err := p.execer.Command("cp", "-r", citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, p.name)).Run()
+	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -rf %s/* %s/%s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath, p.name)).Run()
 	if err != nil {
 		pyNodeLog.Error(err, "restore file failed")
 		return err
@@ -77,16 +77,18 @@ func (p *pyNode) restore() error {
 	return nil
 }
 
-func (p *pyNode) Backup(ctx context.Context) error {
-	err := p.Stop(ctx)
-	if err != nil {
-		return err
+func (p *pyNode) Backup(ctx context.Context, action node.Action) error {
+	if action == node.StopAndStart {
+		err := p.Stop(ctx)
+		if err != nil {
+			return err
+		}
+		err = p.CheckStopped(ctx)
+		if err != nil {
+			return err
+		}
 	}
-	err = p.CheckStopped(ctx)
-	if err != nil {
-		return err
-	}
-	err = p.backup()
+	err := p.backup()
 	if err != nil {
 		return err
 	}
@@ -100,9 +102,11 @@ func (p *pyNode) Backup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = p.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		err = p.Start(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	return err
 }

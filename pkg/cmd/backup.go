@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
@@ -16,6 +17,7 @@ type Backup struct {
 	chain        string
 	node         string
 	deployMethod string
+	action       string
 }
 
 var backup = Backup{}
@@ -30,6 +32,7 @@ func NewBackup() *cobra.Command {
 	cc.Flags().StringVarP(&backup.chain, "chain", "c", "test-node", "The node name this node belongs to.")
 	cc.Flags().StringVarP(&backup.node, "node", "", "", "The node that you want to backup.")
 	cc.Flags().StringVarP(&backup.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
+	cc.Flags().StringVarP(&backup.action, "action", "a", "StopAndStart", "The action when node backup.")
 	return cc
 }
 
@@ -54,6 +57,20 @@ func backupFunc(cmd *cobra.Command, args []string) {
 		dm = nodepkg.PythonOperator
 	case string(nodepkg.CloudConfig):
 		dm = nodepkg.CloudConfig
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for deploy method"), "invalid parameter for deploy method")
+		os.Exit(1)
+	}
+
+	var action nodepkg.Action
+	switch backup.action {
+	case string(nodepkg.StopAndStart):
+		action = nodepkg.StopAndStart
+	case string(nodepkg.Direct):
+		action = nodepkg.Direct
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for action"), "invalid parameter for action")
+		os.Exit(1)
 	}
 
 	node, err := nodepkg.CreateNode(dm, backup.namespace, backup.node, k8sClient, backup.chain, exec.New())
@@ -61,7 +78,7 @@ func backupFunc(cmd *cobra.Command, args []string) {
 		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = node.Backup(context.Background())
+	err = node.Backup(context.Background(), action)
 	if err != nil {
 		setupLog.Error(err, "exec backup failed")
 		os.Exit(1)

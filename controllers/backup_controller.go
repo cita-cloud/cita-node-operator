@@ -226,6 +226,10 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 func (r *BackupReconciler) setDefaultSpec(backup *citacloudv1.Backup) bool {
 	updateFlag := false
+	if backup.Spec.Action == "" {
+		backup.Spec.Action = chainpkg.StopAndStart
+		updateFlag = true
+	}
 	if backup.Spec.Image == "" {
 		backup.Spec.Image = citacloudv1.DefaultImage
 		updateFlag = true
@@ -438,6 +442,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 								"--chain", backup.Spec.Chain,
 								"--node", backup.Spec.Node,
 								"--deploy-method", string(backup.Spec.DeployMethod),
+								"--action", string(backup.Spec.Action),
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

@@ -35,6 +35,9 @@ spec:
           spec:
             description: BackupSpec defines the desired state of Backup
             properties:
+              action:
+                description: Action
+                type: string
               chain:
                 description: Chain
                 type: string

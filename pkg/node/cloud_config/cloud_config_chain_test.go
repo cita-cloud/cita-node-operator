@@ -97,7 +97,7 @@ var _ = Describe("Test for cloud-config node", func() {
 
 			chain, err := nodepkg.CreateNode(nodepkg.CloudConfig, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
-			err = chain.Backup(ctx)
+			err = chain.Backup(ctx, nodepkg.StopAndStart)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

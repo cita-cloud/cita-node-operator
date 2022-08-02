@@ -67,7 +67,7 @@ func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error
 }
 
 func (c *cloudConfigNode) restore() error {
-	err := c.execer.Command("cp", "-rf", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath).Run()
+	err := c.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -rf %s/* %s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath)).Run()
 	if err != nil {
 		cloudConfigNodeLog.Error(err, "restore file failed")
 		return err
@@ -170,16 +170,18 @@ func (c *cloudConfigNode) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *cloudConfigNode) Backup(ctx context.Context) error {
-	err := c.Stop(ctx)
-	if err != nil {
-		return err
+func (c *cloudConfigNode) Backup(ctx context.Context, action node.Action) error {
+	if action == node.StopAndStart {
+		err := c.Stop(ctx)
+		if err != nil {
+			return err
+		}
+		err = c.CheckStopped(ctx)
+		if err != nil {
+			return err
+		}
 	}
-	err = c.CheckStopped(ctx)
-	if err != nil {
-		return err
-	}
-	err = c.backup()
+	err := c.backup()
 	if err != nil {
 		return err
 	}
@@ -195,9 +197,11 @@ func (c *cloudConfigNode) Backup(ctx context.Context) error {
 		return err
 	}
 
-	err = c.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		err = c.Start(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	return err
 }
