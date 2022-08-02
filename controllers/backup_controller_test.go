@@ -44,6 +44,19 @@ var _ = Describe("Backup controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, backup)).Should(Succeed())
 
+			backupLookupKey := types.NamespacedName{Name: BackupNameForPythonChain, Namespace: BackupChainNamespace}
+			createdBackup := &citacloudv1.Backup{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, backupLookupKey, createdBackup)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(createdBackup.Spec.DeployMethod).Should(Equal(chainpkg.PythonOperator))
+
 			By("By checking that a new job has been created for backup")
 			jobLookupKey := types.NamespacedName{Name: BackupNameForPythonChain, Namespace: BackupChainNamespace}
 			createdJob := &v1.Job{}
@@ -55,13 +68,10 @@ var _ = Describe("Backup controller", func() {
 				return true
 			}, timeout, interval).Should(BeTrue())
 
-			//createdJob.Status
+			// set job succeed
 			createdJob.Status.Succeeded = 1
 			Expect(k8sClient.Update(ctx, createdJob)).Should(Succeed())
 
-			//backupLookupKey := types.NamespacedName{Name: BackupNameForPythonChain, Namespace: BackupChainNamespace}
-			//createdBackup := &citacloudv1.Backup{}
-			//
 			//Eventually(func() bool {
 			//	err := k8sClient.Get(ctx, backupLookupKey, createdBackup)
 			//	if err != nil {
