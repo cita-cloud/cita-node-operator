@@ -29,6 +29,7 @@ import (
 	"k8s.io/utils/exec"
 	fakeexec "k8s.io/utils/exec/testing"
 	"k8s.io/utils/pointer"
+	"os"
 	"time"
 )
 
@@ -81,11 +82,16 @@ var _ = Describe("Test for cloud-config node", func() {
 					// Failure.
 					//func() ([]byte, []byte, error) { return nil, nil, &fakeexec.FakeExitError{Status: 1} },
 				},
+				CombinedOutputScript: []fakeexec.FakeAction{
+					func() ([]byte, []byte, error) {
+						return []byte("1827315822\t/backup-dest\n"), nil, nil
+					},
+				},
 			}
 			fexec := fakeexec.FakeExec{
 				CommandScript: []fakeexec.FakeCommandAction{
 					func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
-					//func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
+					func(cmd string, args ...string) exec.Cmd { return fakeexec.InitFakeCmd(&fcmd, cmd, args...) },
 				},
 			}
 
@@ -158,4 +164,57 @@ func createCloudConfigChain(ctx context.Context) {
 			return true
 		}, timeout, interval).Should(BeTrue())
 	}
+
+	_ = os.Setenv("MY_POD_NAME", fmt.Sprintf("%s-0-cte", ChainName))
+	_ = os.Setenv("MY_POD_NAMESPACE", ChainNamespace)
+
+	pod := &corev1.Pod{}
+	pod.Name = fmt.Sprintf("%s-0-cte", ChainName)
+	pod.Namespace = ChainNamespace
+
+	pod.Spec = corev1.PodSpec{
+		Containers: []corev1.Container{
+			{
+				Name:  "controller",
+				Image: "image",
+				Env: []corev1.EnvVar{
+					{
+						Name: "MY_POD_NAME",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.name",
+							},
+						},
+					},
+					{
+						Name: "MY_POD_NAMESPACE",
+						ValueFrom: &corev1.EnvVarSource{
+							FieldRef: &corev1.ObjectFieldSelector{
+								FieldPath: "metadata.namespace",
+							},
+						},
+					},
+				},
+			},
+		},
+		Volumes: []corev1.Volume{
+			{
+				Name: "datadir",
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: "local-pvc",
+						ReadOnly:  false,
+					},
+				},
+			},
+		},
+	}
+
+	Eventually(func() bool {
+		err := k8sClient.Create(ctx, pod)
+		if err != nil {
+			return false
+		}
+		return true
+	}, timeout, interval).Should(BeTrue())
 }

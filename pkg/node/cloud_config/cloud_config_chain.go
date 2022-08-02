@@ -22,12 +22,15 @@ import (
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strings"
 	"time"
 )
 
@@ -180,6 +183,18 @@ func (c *cloudConfigNode) Backup(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	size, err := c.calculateSize()
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{"backup-size": size}
+	err = c.AddAnnotations(ctx, annotations)
+	if err != nil {
+		return err
+	}
+
 	err = c.Start(ctx)
 	if err != nil {
 		return err
@@ -188,8 +203,7 @@ func (c *cloudConfigNode) Backup(ctx context.Context) error {
 }
 
 func (c *cloudConfigNode) backup() error {
-	//exec := utilexec.New()
-	err := c.execer.Command("cp", "-r", citacloudv1.BackupSourceVolumePath, citacloudv1.BackupSourceVolumePath).Run()
+	err := c.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -r %s/* %s", citacloudv1.BackupSourceVolumePath, citacloudv1.BackupDestVolumePath)).Run()
 	if err != nil {
 		cloudConfigNodeLog.Error(err, "copy file failed")
 		return err
@@ -197,6 +211,38 @@ func (c *cloudConfigNode) backup() error {
 	// calculate size
 
 	cloudConfigNodeLog.Info("copy file completed")
+	return nil
+}
+
+func (c *cloudConfigNode) calculateSize() (string, error) {
+	// calculate size
+	usageByte, err := c.execer.Command("du", "-sb", citacloudv1.BackupDestVolumePath).CombinedOutput()
+	if err != nil {
+		cloudConfigNodeLog.Info("calculate backup size failed")
+		return "", err
+	}
+	usageStr := strings.Split(string(usageByte), "\t")
+	cloudConfigNodeLog.Info(fmt.Sprintf("calculate backup size success: [%s]", usageStr[0]))
+	return usageStr[0], nil
+}
+
+func (c *cloudConfigNode) AddAnnotations(ctx context.Context, annotations map[string]string) error {
+	pod := &corev1.Pod{}
+	err := c.Get(ctx, types.NamespacedName{
+		Name:      os.Getenv("MY_POD_NAME"),
+		Namespace: os.Getenv("MY_POD_NAMESPACE"),
+	}, pod)
+	if err != nil {
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("get pod %s/%s failed", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+		return err
+	}
+	pod.Annotations = annotations
+	err = c.Update(ctx, pod)
+	if err != nil {
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("update pod %s/%s annotation failed", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+		return err
+	}
+	cloudConfigNodeLog.Info(fmt.Sprintf("update pod %s/%s annotation successful", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
 	return nil
 }
 

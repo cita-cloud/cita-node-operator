@@ -9,4 +9,5 @@ spec:
   node: chain-734116911817822208-0
   deployMethod: python
   storageClass: csi-nas
+  pullPolicy: Always
 

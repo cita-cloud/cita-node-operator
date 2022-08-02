@@ -108,7 +108,7 @@ func (p *pyNode) Backup(ctx context.Context) error {
 }
 
 func (p *pyNode) backup() error {
-	err := p.execer.Command("cp", "-r", fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name), citacloudv1.BackupDestVolumePath).Run()
+	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -r %s/%s/* %s", citacloudv1.BackupSourceVolumePath, p.name, citacloudv1.BackupDestVolumePath)).Run()
 	if err != nil {
 		pyNodeLog.Error(err, "copy file failed")
 		return err

@@ -350,7 +350,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 		stsList := &appsv1.StatefulSetList{}
 		stsOpts := []client.ListOption{
 			client.InNamespace(backup.Spec.Namespace),
-			client.MatchingLabels(map[string]string{"app.kubernetes.io/node-name": backup.Spec.Chain, "app.kubernetes.io/node-node": backup.Spec.Node}),
+			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": backup.Spec.Chain, "app.kubernetes.io/chain-node": backup.Spec.Node}),
 		}
 		if err := r.List(ctx, stsList, stsOpts...); err != nil {
 			return nil, err
