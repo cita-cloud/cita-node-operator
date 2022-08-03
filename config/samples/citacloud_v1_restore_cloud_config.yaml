@@ -1,0 +1,12 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Restore
+metadata:
+  name: restore-sample-cloud-config
+  namespace: cita
+spec:
+  chain: test-chain-zenoh-bft
+  namespace: cita
+  node: test-chain-zenoh-bft-node0
+  deployMethod: cloud-config
+  backup: backup-sample-cloud-config
+  pullPolicy: Always

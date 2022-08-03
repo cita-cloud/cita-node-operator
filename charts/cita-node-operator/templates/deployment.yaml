@@ -27,8 +27,7 @@ spec:
             - /cita-node-operator
           args:
             - --leader-elect
-{{/*          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}/cita-node-operator:{{ .Values.image.tag }}*/}}
-          image: registry.devops.rivtower.com/cita-cloud/operator/cita-node-operator:v0.0.1
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}/cita-node-operator:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: operator
           securityContext:
