@@ -19,3 +19,4 @@ header:
     - 'go.sum'
     - 'vendor/**'
     - 'config/**'
+    - 'doc/DEV_DOC_CN.md'
