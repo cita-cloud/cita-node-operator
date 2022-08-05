@@ -1,4 +1,4 @@
-name: Run Test && Build Latest Docker Images
+name: Build Latest Docker Images
 
 on:
   push:
