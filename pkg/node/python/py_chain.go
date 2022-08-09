@@ -30,6 +30,7 @@ import (
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -88,16 +89,40 @@ func (p *pyNode) Backup(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	err := p.backup()
+
+	totalSize, err := p.calculateSize(citacloudv1.BackupSourceVolumePath)
 	if err != nil {
 		return err
 	}
-	size, err := p.calculateSize()
-	if err != nil {
-		return err
+	pyNodeLog.Info(fmt.Sprintf("calculate backup total size success: [%d]", totalSize))
+
+	ticker := time.NewTicker(time.Second * 3)
+	defer ticker.Stop()
+	done := make(chan bool)
+
+	go func() {
+		_ = p.backup()
+		done <- true
+	}()
+
+LOOP:
+	for {
+		select {
+		case <-done:
+			break LOOP
+		case <-ticker.C:
+			// calculate progress
+			currentSize, err := p.calculateSize(citacloudv1.BackupDestVolumePath)
+			if err != nil {
+				pyNodeLog.Error(err, "calculate current size failed")
+				return err
+			}
+			percent, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(currentSize)*100/float64(totalSize)), 64)
+			pyNodeLog.Info(fmt.Sprintf("backup progress: [%f]", percent))
+		}
 	}
 
-	annotations := map[string]string{"backup-size": size}
+	annotations := map[string]string{"backup-size": strconv.FormatInt(totalSize, 10)}
 	err = p.AddAnnotations(ctx, annotations)
 	if err != nil {
 		return err
@@ -121,16 +146,19 @@ func (p *pyNode) backup() error {
 	return nil
 }
 
-func (p *pyNode) calculateSize() (string, error) {
+func (p *pyNode) calculateSize(path string) (int64, error) {
 	// calculate size
-	usageByte, err := p.execer.Command("du", "-sb", citacloudv1.BackupDestVolumePath).CombinedOutput()
+	usageByte, err := p.execer.Command("du", "-sb", path).CombinedOutput()
 	if err != nil {
-		pyNodeLog.Info("calculate backup size failed")
-		return "", err
+		pyNodeLog.Info("calculate backup total size failed")
+		return 0, err
 	}
 	usageStr := strings.Split(string(usageByte), "\t")
-	pyNodeLog.Info(fmt.Sprintf("calculate backup size success: [%s]", usageStr[0]))
-	return usageStr[0], nil
+	usage, err := strconv.ParseInt(usageStr[0], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return usage, nil
 }
 
 func (p *pyNode) AddAnnotations(ctx context.Context, annotations map[string]string) error {

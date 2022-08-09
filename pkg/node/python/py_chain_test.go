@@ -29,6 +29,7 @@ import (
 	fakeexec "k8s.io/utils/exec/testing"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"testing"
 	"time"
 )
 
@@ -230,4 +231,12 @@ func createPythonChain(ctx context.Context) {
 
 func setEnv(ctx context.Context) {
 
+}
+
+func TestA(t *testing.T) {
+	//a := 38792463603
+	//b := 29656282
+	////fmt.Println((b * 100.0f)/ a)
+	//num1, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(b)*100/float64(a)), 64)
+	//fmt.Println(num1)
 }
