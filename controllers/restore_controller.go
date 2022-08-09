@@ -22,7 +22,6 @@ import (
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -84,75 +83,16 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	// Check if the serviceAccount already exists, if not create a new one
-	foundServiceAccount := &corev1.ServiceAccount{}
-	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.CITANodeJobServiceAccount, Namespace: backup.Namespace}, foundServiceAccount)
-	if err != nil && errors.IsNotFound(err) {
-		sa := r.serviceAccountForBlockHeightFallback(restore)
-		logger.Info("creating a new service account")
-		err = r.Create(ctx, sa)
-		if err != nil {
-			logger.Error(err, "failed to create new service account")
-			return ctrl.Result{}, err
-		}
-	} else if err != nil {
-		logger.Error(err, "failed to get service account")
+	jobRbac := newJobRbac(
+		r.Client,
+		log.FromContext(ctx),
+		req.Namespace,
+		citacloudv1.CITANodeJobServiceAccount,
+		citacloudv1.CITANodeJobClusterRole,
+		citacloudv1.CITANodeJobClusterRoleBinding)
+	err = jobRbac.Ensure(ctx)
+	if err != nil {
 		return ctrl.Result{}, err
-	} else {
-		// todo reconcile
-	}
-
-	// Check if the cluster role already exists, if not create a new one
-	foundClusterRole := &rbacv1.ClusterRole{}
-	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.CITANodeJobClusterRole}, foundClusterRole)
-	if err != nil && errors.IsNotFound(err) {
-		clusterRole := r.clusterRoleForBlockHeightFallback()
-		logger.Info("creating a new cluster role")
-		err = r.Create(ctx, clusterRole)
-		if err != nil {
-			logger.Error(err, "failed to create new cluster role")
-			return ctrl.Result{}, err
-		}
-	} else if err != nil {
-		logger.Error(err, "failed to get cluster role")
-		return ctrl.Result{}, err
-	} else {
-		// todo reconcile
-	}
-
-	// Check if the cluster role binding already exists, if not create a new one
-	foundClusterRoleBinding := &rbacv1.ClusterRoleBinding{}
-	err = r.Get(ctx, types.NamespacedName{Name: citacloudv1.CITANodeJobClusterRoleBinding}, foundClusterRoleBinding)
-	if err != nil && errors.IsNotFound(err) {
-		clusterRoleBinding := r.clusterRoleBindingForBlockHeightFallback(restore)
-		logger.Info("creating a new cluster role binding")
-		err = r.Create(ctx, clusterRoleBinding)
-		if err != nil {
-			logger.Error(err, "failed to create new cluster role binding")
-			return ctrl.Result{}, err
-		}
-	} else if err != nil {
-		logger.Error(err, "failed to get cluster role binding")
-		return ctrl.Result{}, err
-	} else {
-		var existServiceAccount bool
-		for _, subject := range foundClusterRoleBinding.Subjects {
-			if subject.Name == citacloudv1.CITANodeJobServiceAccount && subject.Namespace == backup.Namespace {
-				existServiceAccount = true
-			}
-		}
-		if !existServiceAccount {
-			foundClusterRoleBinding.Subjects = append(foundClusterRoleBinding.Subjects, rbacv1.Subject{
-				Kind:      "ServiceAccount",
-				Name:      citacloudv1.CITANodeJobServiceAccount,
-				Namespace: backup.Namespace,
-			})
-			err := r.Update(ctx, foundClusterRoleBinding)
-			if err != nil {
-				logger.Error(err, "failed to update cluster role binding")
-				return ctrl.Result{}, err
-			}
-		}
 	}
 
 	// Check if the job already exists, if not create a new one
@@ -238,61 +178,6 @@ func (r *RestoreReconciler) setDefaultStatus(restore *citacloudv1.Restore) bool 
 		updateFlag = true
 	}
 	return updateFlag
-}
-
-func (r *RestoreReconciler) serviceAccountForBlockHeightFallback(restore *citacloudv1.Restore) *corev1.ServiceAccount {
-	sa := &corev1.ServiceAccount{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      citacloudv1.CITANodeJobServiceAccount,
-			Namespace: restore.Namespace,
-		},
-	}
-	return sa
-}
-
-func (r *RestoreReconciler) clusterRoleForBlockHeightFallback() *rbacv1.ClusterRole {
-	stsPR := rbacv1.PolicyRule{
-		Verbs:     []string{"get", "list", "watch", "update"},
-		APIGroups: []string{"apps"},
-		Resources: []string{"statefulsets"},
-	}
-	depPR := rbacv1.PolicyRule{
-		Verbs:     []string{"get", "list", "watch", "update"},
-		APIGroups: []string{"apps"},
-		Resources: []string{"deployments"},
-	}
-
-	clusterRole := &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: citacloudv1.CITANodeJobClusterRole,
-		},
-		Rules: []rbacv1.PolicyRule{
-			stsPR,
-			depPR,
-		},
-	}
-	return clusterRole
-}
-
-func (r *RestoreReconciler) clusterRoleBindingForBlockHeightFallback(restore *citacloudv1.Restore) *rbacv1.ClusterRoleBinding {
-	clusterRoleBinding := &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: citacloudv1.CITANodeJobClusterRoleBinding,
-		},
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      citacloudv1.CITANodeJobServiceAccount,
-				Namespace: restore.Namespace,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "ClusterRole",
-			Name:     citacloudv1.CITANodeJobClusterRole,
-		},
-	}
-	return clusterRoleBinding
 }
 
 func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citacloudv1.Restore) (*v1.Job, error) {
