@@ -65,7 +65,13 @@ func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
 }
 
 func (h *helmNode) restore() error {
-	err := h.execer.Command("cp", "-r", citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, h.name)).Run()
+	err := h.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/%s/*", citacloudv1.RestoreDestVolumePath, h.name)).Run()
+	if err != nil {
+		helmNodeLog.Error(err, "clean dest dir failed")
+		return err
+	}
+
+	err = h.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/* %s/%s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath, h.name)).Run()
 	if err != nil {
 		helmNodeLog.Error(err, "restore file failed")
 		return err
@@ -142,7 +148,6 @@ func (h *helmNode) Fallback(ctx context.Context, blockHeight int64) error {
 
 func (h *helmNode) fallback(blockHeight int64) error {
 	helmNodeLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d]...", h.name, blockHeight))
-	//exec := utilexec.New()
 	err := h.execer.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
 		"--node-root", fmt.Sprintf("/mnt/%s", h.name),
 		"--config-path", fmt.Sprintf("/mnt/%s/config.toml", h.name)).Run()

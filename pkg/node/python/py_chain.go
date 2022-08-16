@@ -68,7 +68,13 @@ func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 }
 
 func (p *pyNode) restore() error {
-	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -rf %s/* %s/%s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath, p.name)).Run()
+	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/%s/*", citacloudv1.RestoreDestVolumePath, p.name)).Run()
+	if err != nil {
+		pyNodeLog.Error(err, "clean dest dir failed")
+		return err
+	}
+
+	err = p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/* %s/%s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath, p.name)).Run()
 	if err != nil {
 		pyNodeLog.Error(err, "restore file failed")
 		return err
@@ -137,7 +143,7 @@ LOOP:
 }
 
 func (p *pyNode) backup() error {
-	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -r %s/%s/* %s", citacloudv1.BackupSourceVolumePath, p.name, citacloudv1.BackupDestVolumePath)).Run()
+	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -a %s/%s/* %s", citacloudv1.BackupSourceVolumePath, p.name, citacloudv1.BackupDestVolumePath)).Run()
 	if err != nil {
 		pyNodeLog.Error(err, "copy file failed")
 		return err
