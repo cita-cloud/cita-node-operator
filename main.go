@@ -18,9 +18,8 @@ package main
 
 import (
 	"flag"
-	"os"
-
 	"go.uber.org/zap/zapcore"
+	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -127,3 +126,35 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+//func deleteFinishedJob(ctx context.Context, client client.Client) {
+//	timeTickerChan := time.Tick(time.Second * 30)
+//	for {
+//		<-timeTickerChan
+//
+//	}
+//}
+//
+//type Fn func(ctx context.Context, client client.Client) error
+//
+//type MyTicker struct {
+//	MyTick *time.Ticker
+//	Runner Fn
+//	Client client.Client
+//}
+//
+//func NewMyTick(interval int, f Fn) *MyTicker {
+//	return &MyTicker{
+//		MyTick: time.NewTicker(time.Duration(interval) * time.Second),
+//		Runner: f,
+//	}
+//}
+//
+//func (t *MyTicker) Start() {
+//	for {
+//		select {
+//		case <-t.MyTick.C:
+//			t.Runner(context.Background(), t.Client)
+//		}
+//	}
+//}

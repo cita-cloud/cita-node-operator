@@ -96,13 +96,13 @@ func (p *pyNode) Backup(ctx context.Context, action node.Action) error {
 		}
 	}
 
-	totalSize, err := p.calculateSize(citacloudv1.BackupSourceVolumePath)
+	totalSize, err := p.calculateSize(fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name))
 	if err != nil {
 		return err
 	}
 	pyNodeLog.Info(fmt.Sprintf("calculate backup total size success: [%d]", totalSize))
 
-	ticker := time.NewTicker(time.Second * 3)
+	ticker := time.NewTicker(time.Second * 5)
 	defer ticker.Stop()
 	done := make(chan bool)
 
@@ -124,7 +124,7 @@ LOOP:
 				return err
 			}
 			percent, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(currentSize)*100/float64(totalSize)), 64)
-			pyNodeLog.Info(fmt.Sprintf("backup progress: [%f]", percent))
+			pyNodeLog.Info(fmt.Sprintf("backup progress: [%.2f%%]", percent))
 		}
 	}
 

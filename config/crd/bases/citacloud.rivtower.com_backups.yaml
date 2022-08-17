@@ -76,6 +76,10 @@ spec:
                 description: Allocate
                 format: int64
                 type: integer
+              blockHeight:
+                description: BlockHeight
+                format: int64
+                type: integer
               endTime:
                 description: EndTime
                 format: date-time

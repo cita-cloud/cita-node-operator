@@ -57,6 +57,8 @@ type BackupStatus struct {
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 	// EndTime
 	EndTime *metav1.Time `json:"endTime,omitempty"`
+	// BlockHeight
+	BlockHeight int64 `json:"blockHeight,omitempty"`
 }
 
 //+kubebuilder:object:root=true

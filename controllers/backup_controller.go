@@ -29,8 +29,11 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strconv"
 
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
@@ -139,6 +142,18 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
+
+		// delete job
+		dp := metav1.DeletePropagationForeground
+		do := &client.DeleteOptions{}
+		do.ApplyOptions([]client.DeleteOption{
+			client.PropagationPolicy(dp),
+		})
+		err = r.Delete(ctx, job, do)
+		if err != nil {
+			logger.Error(err, "delete job failed")
+			return ctrl.Result{}, err
+		}
 	} else if job.Status.Succeeded == 1 {
 		cur.Status.Status = citacloudv1.JobComplete
 		// get backup size from pod annotations
@@ -162,6 +177,18 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		}
 		cur.Status.Actual = backupSize
 		cur.Status.EndTime = job.Status.CompletionTime
+
+		// delete job
+		dp := metav1.DeletePropagationForeground
+		do := &client.DeleteOptions{}
+		do.ApplyOptions([]client.DeleteOption{
+			client.PropagationPolicy(dp),
+		})
+		err = r.Delete(ctx, job, do)
+		if err != nil {
+			logger.Error(err, "delete job failed")
+			return ctrl.Result{}, err
+		}
 	}
 	if !IsEqual(cur, backup) {
 		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
@@ -385,6 +412,19 @@ func labelsForBackup(backup *citacloudv1.Backup) map[string]string {
 func (r *BackupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&citacloudv1.Backup{}).
-		Owns(&v1.Job{}).
+		Owns(&v1.Job{}, builder.WithPredicates(r.jobPredicate())).
 		Complete(r)
+}
+
+func (r *BackupReconciler) jobPredicate() predicate.Predicate {
+	return predicate.Funcs{
+		DeleteFunc: func(event event.DeleteEvent) bool {
+			job := event.Object.(*v1.Job)
+			if job.Status.Succeeded == 1 || job.Status.Failed == 1 {
+				return false
+			}
+			return true
+		},
+	}
+
 }
