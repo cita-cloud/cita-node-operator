@@ -38,6 +38,8 @@ type Fallback struct {
 	chain        string
 	deployMethod string
 	blockHeight  int64
+	crypto       string
+	consensus    string
 }
 
 var fallback = Fallback{}
@@ -53,6 +55,8 @@ func NewFallbackCommand() *cobra.Command {
 	cc.Flags().StringVarP(&fallback.chain, "chain", "c", "test-chain", "The node name this node belongs to.")
 	cc.Flags().StringVarP(&fallback.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
 	cc.Flags().Int64VarP(&fallback.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
+	cc.Flags().StringVarP(&fallback.crypto, "crypto", "", "sm", "The node of crypto. [sm/eth]")
+	cc.Flags().StringVarP(&fallback.consensus, "consensus", "", "bft", "The node of consensus. [bft/raft]")
 	return cc
 }
 
@@ -83,7 +87,7 @@ func fallBackFunc(cmd *cobra.Command, args []string) {
 		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = chain.Fallback(context.Background(), fallback.blockHeight)
+	err = chain.Fallback(context.Background(), fallback.blockHeight, fallback.crypto, fallback.consensus)
 	if err != nil {
 		setupLog.Error(err, "exec block height fallback failed")
 		os.Exit(1)

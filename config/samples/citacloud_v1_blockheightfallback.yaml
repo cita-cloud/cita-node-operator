@@ -2,11 +2,11 @@ apiVersion: citacloud.rivtower.com/v1
 kind: BlockHeightFallback
 metadata:
   name: blockheightfallback-sample
-  namespace: cita
+  namespace: app-rivspace
 spec:
-  chain: jj
-  namespace: cita
-  node: jj-0
-  blockHeight: 30
-  deployMethod: helm
+  chain: chain-734116911817822208
+  namespace: app-rivspace
+  node: chain-734116911817822208-0
+  blockHeight: 1488875
+  deployMethod: python
   pullPolicy: Always

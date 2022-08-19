@@ -21,13 +21,17 @@ import (
 	"fmt"
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
+	"github.com/cita-cloud/cita-node-operator/pkg/node/behavior"
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"strconv"
 	"time"
 )
 
@@ -37,11 +41,11 @@ var (
 
 type helmNode struct {
 	client.Client
+	behavior  behavior.Interface
 	namespace string
 	name      string
 	chain     string
 	replicas  *int32
-	execer    exec.Interface
 }
 
 func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
@@ -53,7 +57,7 @@ func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	if err := h.restore(); err != nil {
+	if err := h.behavior.Restore(citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, h.name)); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -61,23 +65,6 @@ func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func (h *helmNode) restore() error {
-	err := h.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/%s/*", citacloudv1.RestoreDestVolumePath, h.name)).Run()
-	if err != nil {
-		helmNodeLog.Error(err, "clean dest dir failed")
-		return err
-	}
-
-	err = h.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/* %s/%s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath, h.name)).Run()
-	if err != nil {
-		helmNodeLog.Error(err, "restore file failed")
-		return err
-	}
-
-	helmNodeLog.Info("restore file completed")
 	return nil
 }
 
@@ -126,7 +113,7 @@ func (h *helmNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (h *helmNode) Fallback(ctx context.Context, blockHeight int64) error {
+func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error {
 	err := h.Stop(ctx)
 	if err != nil {
 		return err
@@ -135,7 +122,8 @@ func (h *helmNode) Fallback(ctx context.Context, blockHeight int64) error {
 	if err != nil {
 		return err
 	}
-	err = h.fallback(blockHeight)
+	err = h.behavior.Fallback(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, h.name),
+		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, h.name), crypto, consensus)
 	if err != nil {
 		return err
 	}
@@ -144,19 +132,6 @@ func (h *helmNode) Fallback(ctx context.Context, blockHeight int64) error {
 		return err
 	}
 	return err
-}
-
-func (h *helmNode) fallback(blockHeight int64) error {
-	helmNodeLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d]...", h.name, blockHeight))
-	err := h.execer.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
-		"--node-root", fmt.Sprintf("/mnt/%s", h.name),
-		"--config-path", fmt.Sprintf("/mnt/%s/config.toml", h.name)).Run()
-	if err != nil {
-		helmNodeLog.Error(err, "exec block height fallback failed")
-		return err
-	}
-	helmNodeLog.Info(fmt.Sprintf("exec block height fallback: [node: %s, height: %d] successful", h.name, blockHeight))
-	return nil
 }
 
 func (h *helmNode) Start(ctx context.Context) error {
@@ -176,17 +151,63 @@ func (h *helmNode) Start(ctx context.Context) error {
 }
 
 func (h *helmNode) Backup(ctx context.Context, action node.Action) error {
-	//TODO implement me
-	panic("implement me")
+	if action == node.StopAndStart {
+		err := h.Stop(ctx)
+		if err != nil {
+			return err
+		}
+		err = h.CheckStopped(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	totalSize, err := h.behavior.Backup(fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, h.name), citacloudv1.BackupDestVolumePath)
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{"backup-size": strconv.FormatInt(totalSize, 10)}
+	err = h.AddAnnotations(ctx, annotations)
+	if err != nil {
+		return err
+	}
+	if action == node.StopAndStart {
+		err = h.Start(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (h *helmNode) AddAnnotations(ctx context.Context, annotations map[string]string) error {
+	pod := &corev1.Pod{}
+	err := h.Get(ctx, types.NamespacedName{
+		Name:      os.Getenv("MY_POD_NAME"),
+		Namespace: os.Getenv("MY_POD_NAMESPACE"),
+	}, pod)
+	if err != nil {
+		helmNodeLog.Error(err, fmt.Sprintf("get pod %s/%s failed", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+		return err
+	}
+	pod.Annotations = annotations
+	err = h.Update(ctx, pod)
+	if err != nil {
+		helmNodeLog.Error(err, fmt.Sprintf("update pod %s/%s annotation failed", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+		return err
+	}
+	helmNodeLog.Info(fmt.Sprintf("update pod %s/%s annotation successful", os.Getenv("MY_POD_NAMESPACE"), os.Getenv("MY_POD_NAME")))
+	return nil
 }
 
 func newHelmNode(namespace, name string, client client.Client, chain string, execer exec.Interface) (node.Node, error) {
 	return &helmNode{
 		Client:    client,
+		behavior:  behavior.NewBehavior(execer, helmNodeLog),
 		namespace: namespace,
 		name:      name,
 		chain:     chain,
-		execer:    execer,
 	}, nil
 }
 

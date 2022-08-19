@@ -42,7 +42,7 @@ func CreateNode(deployMethod DeployMethod, namespace, name string, client client
 type Node interface {
 	Stop(ctx context.Context) error
 	CheckStopped(ctx context.Context) error
-	Fallback(ctx context.Context, blockHeight int64) error
+	Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error
 	Start(ctx context.Context) error
 	Backup(ctx context.Context, action Action) error
 	Restore(ctx context.Context, action Action) error

@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -95,6 +96,11 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	if restore.Status.Status == citacloudv1.JobComplete || restore.Status.Status == citacloudv1.JobFailed {
+		logger.Info(fmt.Sprintf("restore status is finished: [%s]", restore.Status.Status))
+		return ctrl.Result{}, nil
+	}
+
 	// Check if the job already exists, if not create a new one
 	foundJob := &v1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: restore.Name, Namespace: restore.Namespace}, foundJob)
@@ -132,9 +138,34 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
+
+		// delete job
+		dp := metav1.DeletePropagationForeground
+		do := &client.DeleteOptions{}
+		do.ApplyOptions([]client.DeleteOption{
+			client.PropagationPolicy(dp),
+		})
+		err = r.Delete(ctx, job, do)
+		if err != nil {
+			logger.Error(err, "delete job failed")
+			return ctrl.Result{}, err
+		}
+
 	} else if job.Status.Succeeded == 1 {
 		cur.Status.Status = citacloudv1.JobComplete
 		cur.Status.EndTime = job.Status.CompletionTime
+
+		// delete job
+		dp := metav1.DeletePropagationForeground
+		do := &client.DeleteOptions{}
+		do.ApplyOptions([]client.DeleteOption{
+			client.PropagationPolicy(dp),
+		})
+		err = r.Delete(ctx, job, do)
+		if err != nil {
+			logger.Error(err, "delete job failed")
+			return ctrl.Result{}, err
+		}
 	}
 	if !IsEqual(cur, restore) {
 		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
@@ -276,6 +307,6 @@ func labelsForRestore(restore *citacloudv1.Restore) map[string]string {
 func (r *RestoreReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&citacloudv1.Restore{}).
-		Owns(&v1.Job{}).
+		Owns(&v1.Job{}, builder.WithPredicates(jobPredicate())).
 		Complete(r)
 }

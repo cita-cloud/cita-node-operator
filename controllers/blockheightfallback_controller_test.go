@@ -124,7 +124,9 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.Helm),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node", node}
+				"--node", node,
+				"--crypto", "sm",
+				"--consensus", "bft"}
 			Expect(container.Args).Should(Equal(args))
 		})
 	})
@@ -205,7 +207,9 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.PythonOperator),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node", node}
+				"--node", node,
+				"--crypto", "sm",
+				"--consensus", "raft"}
 			Expect(container.Args).Should(Equal(args))
 
 		})
@@ -287,7 +291,9 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.CloudConfig),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node", node}
+				"--node", node,
+				"--crypto", "sm",
+				"--consensus", "overlord"}
 			Expect(container.Args).Should(Equal(args))
 		})
 	})
@@ -364,7 +370,9 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				"--chain", ChainName,
 				"--deploy-method", string(chainpkg.PythonOperator),
 				"--block-height", strconv.FormatInt(BlockHeight, 10),
-				"--node", oneNode}
+				"--node", oneNode,
+				"--crypto", "sm",
+				"--consensus", "raft"}
 			Expect(container.Args).Should(Equal(args))
 		})
 	})
@@ -387,6 +395,16 @@ func createHelmChain(ctx context.Context) {
 				Labels: labels,
 			},
 			Spec: corev1.PodSpec{
+				Containers: []corev1.Container{
+					{
+						Name:  "consensus",
+						Image: "citacloud/consensus_bft:v6.4.0",
+					},
+					{
+						Name:  "kms",
+						Image: "citacloud/kms_sm:v6.4.0",
+					},
+				},
 				Volumes: []corev1.Volume{
 					{
 						Name: "datadir",
@@ -446,6 +464,14 @@ func createPythonChain(ctx context.Context, chainName string, create bool) {
 							Name:  "controller",
 							Image: "image",
 						},
+						{
+							Name:  "consensus",
+							Image: "citacloud/consensus_raft:v6.5.0",
+						},
+						{
+							Name:  "crypto",
+							Image: "citacloud/crypto_sm:v6.5.0",
+						},
 					},
 					Volumes: []corev1.Volume{
 						{
@@ -485,6 +511,16 @@ func createCloudConfigChain(ctx context.Context) {
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "consensus",
+							Image: "citacloud/consensus_overlord:v6.6.0",
+						},
+						{
+							Name:  "crypto",
+							Image: "citacloud/crypto_sm:v6.6.0",
+						},
+					},
 					Volumes: []corev1.Volume{
 						{
 							Name: NodeConfigVolumeName,

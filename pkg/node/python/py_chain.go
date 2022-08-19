@@ -21,6 +21,7 @@ import (
 	"fmt"
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
+	"github.com/cita-cloud/cita-node-operator/pkg/node/behavior"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -31,7 +32,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -41,10 +41,10 @@ var (
 
 type pyNode struct {
 	client.Client
+	behavior  behavior.Interface
 	namespace string
 	name      string
 	chain     string
-	execer    exec.Interface
 }
 
 func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
@@ -56,7 +56,7 @@ func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	if err := p.restore(); err != nil {
+	if err := p.behavior.Restore(citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, p.name)); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -64,23 +64,6 @@ func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	return nil
-}
-
-func (p *pyNode) restore() error {
-	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/%s/*", citacloudv1.RestoreDestVolumePath, p.name)).Run()
-	if err != nil {
-		pyNodeLog.Error(err, "clean dest dir failed")
-		return err
-	}
-
-	err = p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/* %s/%s", citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath, p.name)).Run()
-	if err != nil {
-		pyNodeLog.Error(err, "restore file failed")
-		return err
-	}
-
-	pyNodeLog.Info("restore file completed")
 	return nil
 }
 
@@ -96,36 +79,9 @@ func (p *pyNode) Backup(ctx context.Context, action node.Action) error {
 		}
 	}
 
-	totalSize, err := p.calculateSize(fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name))
+	totalSize, err := p.behavior.Backup(fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name), citacloudv1.BackupDestVolumePath)
 	if err != nil {
 		return err
-	}
-	pyNodeLog.Info(fmt.Sprintf("calculate backup total size success: [%d]", totalSize))
-
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
-	done := make(chan bool)
-
-	go func() {
-		_ = p.backup()
-		done <- true
-	}()
-
-LOOP:
-	for {
-		select {
-		case <-done:
-			break LOOP
-		case <-ticker.C:
-			// calculate progress
-			currentSize, err := p.calculateSize(citacloudv1.BackupDestVolumePath)
-			if err != nil {
-				pyNodeLog.Error(err, "calculate current size failed")
-				return err
-			}
-			percent, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(currentSize)*100/float64(totalSize)), 64)
-			pyNodeLog.Info(fmt.Sprintf("backup progress: [%.2f%%]", percent))
-		}
 	}
 
 	annotations := map[string]string{"backup-size": strconv.FormatInt(totalSize, 10)}
@@ -140,31 +96,6 @@ LOOP:
 		}
 	}
 	return err
-}
-
-func (p *pyNode) backup() error {
-	err := p.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -a %s/%s/* %s", citacloudv1.BackupSourceVolumePath, p.name, citacloudv1.BackupDestVolumePath)).Run()
-	if err != nil {
-		pyNodeLog.Error(err, "copy file failed")
-		return err
-	}
-	pyNodeLog.Info("copy file completed")
-	return nil
-}
-
-func (p *pyNode) calculateSize(path string) (int64, error) {
-	// calculate size
-	usageByte, err := p.execer.Command("du", "-sb", path).CombinedOutput()
-	if err != nil {
-		pyNodeLog.Info("calculate backup total size failed")
-		return 0, err
-	}
-	usageStr := strings.Split(string(usageByte), "\t")
-	usage, err := strconv.ParseInt(usageStr[0], 10, 64)
-	if err != nil {
-		return 0, err
-	}
-	return usage, nil
 }
 
 func (p *pyNode) AddAnnotations(ctx context.Context, annotations map[string]string) error {
@@ -230,7 +161,7 @@ func (p *pyNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (p *pyNode) Fallback(ctx context.Context, blockHeight int64) error {
+func (p *pyNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error {
 	err := p.Stop(ctx)
 	if err != nil {
 		return err
@@ -239,7 +170,8 @@ func (p *pyNode) Fallback(ctx context.Context, blockHeight int64) error {
 	if err != nil {
 		return err
 	}
-	err = p.fallback(blockHeight)
+	err = p.behavior.Fallback(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name),
+		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name), crypto, consensus)
 	if err != nil {
 		return err
 	}
@@ -248,19 +180,6 @@ func (p *pyNode) Fallback(ctx context.Context, blockHeight int64) error {
 		return err
 	}
 	return err
-}
-
-func (p *pyNode) fallback(blockHeight int64) error {
-	pyNodeLog.Info(fmt.Sprintf("exec block height fallback: [node: %s/%s, height: %d]...", p.namespace, p.name, blockHeight))
-	err := p.execer.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
-		"--node-root", fmt.Sprintf("%s", citacloudv1.VolumeMountPath),
-		"--config-path", fmt.Sprintf("%s/config.toml", citacloudv1.ConfigMountPath)).Run()
-	if err != nil {
-		pyNodeLog.Error(err, "exec block height fallback failed")
-		return err
-	}
-	pyNodeLog.Info(fmt.Sprintf("exec block height fallback: [node: %s/%s, height: %d] successful", p.namespace, p.name, blockHeight))
-	return nil
 }
 
 func (p *pyNode) Start(ctx context.Context) error {
@@ -282,10 +201,10 @@ func (p *pyNode) Start(ctx context.Context) error {
 func newPyNode(namespace, name string, client client.Client, chain string, execer exec.Interface) (node.Node, error) {
 	return &pyNode{
 		Client:    client,
+		behavior:  behavior.NewBehavior(execer, pyNodeLog),
 		namespace: namespace,
 		name:      name,
 		chain:     chain,
-		execer:    execer,
 	}, nil
 }
 

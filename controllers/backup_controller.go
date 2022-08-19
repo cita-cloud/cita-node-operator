@@ -31,9 +31,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"strconv"
 
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
@@ -103,6 +101,11 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	err := jobRbac.Ensure(ctx)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+
+	if backup.Status.Status == citacloudv1.JobComplete || backup.Status.Status == citacloudv1.JobFailed {
+		logger.Info(fmt.Sprintf("backup status is finished: [%s]", backup.Status.Status))
+		return ctrl.Result{}, nil
 	}
 
 	// Check if the job already exists, if not create a new one
@@ -412,19 +415,6 @@ func labelsForBackup(backup *citacloudv1.Backup) map[string]string {
 func (r *BackupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&citacloudv1.Backup{}).
-		Owns(&v1.Job{}, builder.WithPredicates(r.jobPredicate())).
+		Owns(&v1.Job{}, builder.WithPredicates(jobPredicate())).
 		Complete(r)
-}
-
-func (r *BackupReconciler) jobPredicate() predicate.Predicate {
-	return predicate.Funcs{
-		DeleteFunc: func(event event.DeleteEvent) bool {
-			job := event.Object.(*v1.Job)
-			if job.Status.Succeeded == 1 || job.Status.Failed == 1 {
-				return false
-			}
-			return true
-		},
-	}
-
 }

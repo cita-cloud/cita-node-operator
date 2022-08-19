@@ -70,7 +70,7 @@ var _ = Describe("Fallback for python node", func() {
 
 			chain, err := nodepkg.CreateNode(nodepkg.PythonOperator, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
-			err = chain.Fallback(ctx, 100)
+			err = chain.Fallback(ctx, 100, "sm", "bft")
 			Expect(err).NotTo(HaveOccurred())
 		})
 

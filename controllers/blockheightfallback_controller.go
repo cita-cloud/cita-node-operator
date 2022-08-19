@@ -27,7 +27,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -90,6 +92,11 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
+	if bhf.Status.Status == citacloudv1.JobComplete || bhf.Status.Status == citacloudv1.JobFailed {
+		logger.Info(fmt.Sprintf("blockheightfallback status is finished: [%s]", bhf.Status.Status))
+		return ctrl.Result{}, nil
+	}
+
 	// Check if the job already exists, if not create a new one
 	foundJob := &v1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: bhf.Name, Namespace: bhf.Namespace}, foundJob)
@@ -113,25 +120,48 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// Update the BlockHeightFallback status
-	jobList := &v1.JobList{}
-	listOpts := []client.ListOption{
-		client.InNamespace(bhf.Namespace),
-		client.MatchingLabels(labelsForBlockHeightFallback(bhf)),
-	}
-	if err = r.List(ctx, jobList, listOpts...); err != nil {
-		logger.Error(err, "failed to list jobs")
+	// todo
+	job := &v1.Job{}
+	err = r.Get(ctx, req.NamespacedName, job)
+	if err != nil {
+		logger.Error(err, fmt.Sprintf("failed to get job %s/%s", bhf.Namespace, bhf.Name))
 		return ctrl.Result{}, err
 	}
 
 	cur := bhf.DeepCopy()
-	job := jobList.Items[0]
 	if job.Status.Active == 1 {
 		cur.Status.Status = citacloudv1.JobActive
 	} else if job.Status.Failed == 1 {
 		cur.Status.Status = citacloudv1.JobFailed
+		endTime := job.Status.Conditions[0].LastTransitionTime
+		cur.Status.EndTime = &endTime
+
+		// delete job
+		dp := metav1.DeletePropagationForeground
+		do := &client.DeleteOptions{}
+		do.ApplyOptions([]client.DeleteOption{
+			client.PropagationPolicy(dp),
+		})
+		err = r.Delete(ctx, job, do)
+		if err != nil {
+			logger.Error(err, "delete job failed")
+			return ctrl.Result{}, err
+		}
 	} else if job.Status.Succeeded == 1 {
 		cur.Status.Status = citacloudv1.JobComplete
+		cur.Status.EndTime = job.Status.CompletionTime
+
+		// delete job
+		dp := metav1.DeletePropagationForeground
+		do := &client.DeleteOptions{}
+		do.ApplyOptions([]client.DeleteOption{
+			client.PropagationPolicy(dp),
+		})
+		err = r.Delete(ctx, job, do)
+		if err != nil {
+			logger.Error(err, "delete job failed")
+			return ctrl.Result{}, err
+		}
 	}
 	if !IsEqual(cur, bhf) {
 		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
@@ -154,6 +184,11 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 		return nil, err
 	}
 	volumeMounts, err := r.getVolumeMounts(ctx, bhf)
+	if err != nil {
+		return nil, err
+	}
+
+	crypto, consensus, err := r.getCryptoAndConsensus(ctx, bhf)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +224,8 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 								"--deploy-method", string(bhf.Spec.DeployMethod),
 								"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 								"--node", bhf.Spec.Node,
+								"--crypto", crypto,
+								"--consensus", consensus,
 							},
 							VolumeMounts: volumeMounts,
 						},
@@ -284,6 +321,57 @@ func (r *BlockHeightFallbackReconciler) getVolumeMounts(ctx context.Context, bhf
 	return nil, nil
 }
 
+func (r *BlockHeightFallbackReconciler) getCryptoAndConsensus(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, string, error) {
+	var crypto, consensus string
+	if bhf.Spec.DeployMethod == nodepkg.Helm {
+		sts := &appsv1.StatefulSet{}
+		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Chain, Namespace: bhf.Spec.Namespace}, sts)
+		if err != nil {
+			return "", "", err
+		}
+		crypto, consensus = filterCryptoAndConsensus(sts.Spec.Template.Spec.Containers)
+	} else if bhf.Spec.DeployMethod == nodepkg.PythonOperator {
+		dep := &appsv1.Deployment{}
+		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Node, Namespace: bhf.Spec.Namespace}, dep)
+		if err != nil {
+			return "", "", err
+		}
+		crypto, consensus = filterCryptoAndConsensus(dep.Spec.Template.Spec.Containers)
+	} else if bhf.Spec.DeployMethod == nodepkg.CloudConfig {
+		sts := &appsv1.StatefulSet{}
+		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Node, Namespace: bhf.Spec.Namespace}, sts)
+		if err != nil {
+			return "", "", err
+		}
+		crypto, consensus = filterCryptoAndConsensus(sts.Spec.Template.Spec.Containers)
+	} else {
+		return "", "", fmt.Errorf("error deploy method")
+	}
+	return crypto, consensus, nil
+}
+
+func filterCryptoAndConsensus(containers []corev1.Container) (string, string) {
+	var crypto, consensus string
+	for _, container := range containers {
+		if container.Name == "crypto" || container.Name == "kms" {
+			if strings.Contains(container.Image, "sm") {
+				crypto = "sm"
+			} else if strings.Contains(container.Image, "eth") {
+				crypto = "eth"
+			}
+		} else if container.Name == "consensus" {
+			if strings.Contains(container.Image, "bft") {
+				consensus = "bft"
+			} else if strings.Contains(container.Image, "raft") {
+				consensus = "raft"
+			} else if strings.Contains(container.Image, "overlord") {
+				consensus = "overlord"
+			}
+		}
+	}
+	return crypto, consensus
+}
+
 func labelsForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) map[string]string {
 	return map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.Chain}
 }
@@ -304,6 +392,11 @@ func (r *BlockHeightFallbackReconciler) setDefaultStatus(bhf *citacloudv1.BlockH
 	updateFlag := false
 	if bhf.Status.Status == "" {
 		bhf.Status.Status = citacloudv1.JobActive
+		updateFlag = true
+	}
+	if bhf.Status.StartTime == nil {
+		startTime := bhf.CreationTimestamp
+		bhf.Status.StartTime = &startTime
 		updateFlag = true
 	}
 	return updateFlag
@@ -353,6 +446,6 @@ func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Contex
 func (r *BlockHeightFallbackReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&citacloudv1.BlockHeightFallback{}).
-		Owns(&v1.Job{}).
+		Owns(&v1.Job{}, builder.WithPredicates(jobPredicate())).
 		Complete(r)
 }
