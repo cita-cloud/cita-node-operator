@@ -54,7 +54,7 @@ type BackupReconciler struct {
 //+kubebuilder:rbac:groups="apps",resources=deployments,verbs=get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups="apps",resources=deployments/status,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;update;patch;delete
-//+kubebuilder:rbac:groups="batch",resources=jobs,verbs=create;get;list;watch
+//+kubebuilder:rbac:groups="batch",resources=jobs,verbs=create;get;list;watch;delete
 //+kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=create;get;list;watch;update
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=create;get;list;watch;update;patch;delete
 //+kubebuilder:rbac:groups="coordination.k8s.io",resources=leases,verbs=create;get;list;watch;update;patch;delete
