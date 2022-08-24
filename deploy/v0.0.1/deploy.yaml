@@ -1,0 +1,794 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cita-node-operator-sa
+  labels:
+    app.kubernetes.io/instance: cita-node-operator
+    app.kubernetes.io/name: cita-node-operator
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cita-node-operator-role
+  labels:
+    app.kubernetes.io/instance: cita-node-operator
+    app.kubernetes.io/name: cita-node-operator
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - create
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - serviceaccounts
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments/status
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - statefulsets/status
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - delete
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - backups
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - backups/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - backups/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - blockheightfallbacks
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - blockheightfallbacks/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - blockheightfallbacks/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - citanodes
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - citanodes/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - citanodes/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - restores
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - restores/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - citacloud.rivtower.com
+    resources:
+      - restores/status
+    verbs:
+      - get
+      - patch
+      - update
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterrolebindings
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - clusterroles
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cita-node-operator-binding
+  labels:
+    app.kubernetes.io/instance: cita-node-operator
+    app.kubernetes.io/name: cita-node-operator
+subjects:
+  - kind: ServiceAccount
+    name: cita-node-operator-sa
+    namespace: cita
+roleRef:
+  kind: ClusterRole
+  name: cita-node-operator-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cita-node-operator
+  labels:
+    app.kubernetes.io/component: cita-node-operator
+    app.kubernetes.io/instance: cita-node-operator
+    app.kubernetes.io/name: cita-node-operator
+spec:
+  selector:
+    matchLabels:
+      app: cita-node-operator
+      app.kubernetes.io/instance: cita-node-operator
+      app.kubernetes.io/name: cita-node-operator
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: cita-node-operator
+        app.kubernetes.io/instance: cita-node-operator
+        app.kubernetes.io/name: cita-node-operator
+    spec:
+      terminationGracePeriodSeconds: 10
+      serviceAccountName: cita-node-operator-sa
+      securityContext:
+        runAsNonRoot: true
+      containers:
+        - command:
+            - /cita-node-operator
+          args:
+            - --leader-elect
+          image: registry.devops.rivtower.com/cita-cloud/cita-node-operator:v0.0.1
+          imagePullPolicy: IfNotPresent
+          name: operator
+          securityContext:
+            allowPrivilegeEscalation: false
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: backups.citacloud.rivtower.com
+spec:
+  group: citacloud.rivtower.com
+  names:
+    kind: Backup
+    listKind: BackupList
+    plural: backups
+    singular: backup
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: Backup is the Schema for the backups API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: BackupSpec defines the desired state of Backup
+              properties:
+                action:
+                  description: Action
+                  type: string
+                chain:
+                  description: Chain
+                  type: string
+                deployMethod:
+                  description: DeployMethod
+                  type: string
+                image:
+                  description: Image
+                  type: string
+                namespace:
+                  description: Namespace
+                  type: string
+                node:
+                  description: Node
+                  type: string
+                pullPolicy:
+                  description: PullPolicy
+                  type: string
+                storageClass:
+                  description: StorageClass
+                  type: string
+              required:
+                - chain
+                - deployMethod
+                - namespace
+                - node
+              type: object
+            status:
+              description: BackupStatus defines the observed state of Backup
+              properties:
+                actual:
+                  description: Actual
+                  format: int64
+                  type: integer
+                allocate:
+                  description: Allocate
+                  format: int64
+                  type: integer
+                endTime:
+                  description: EndTime
+                  format: date-time
+                  type: string
+                startTime:
+                  description: StartTime
+                  format: date-time
+                  type: string
+                status:
+                  description: Status
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: blockheightfallbacks.citacloud.rivtower.com
+spec:
+  group: citacloud.rivtower.com
+  names:
+    kind: BlockHeightFallback
+    listKind: BlockHeightFallbackList
+    plural: blockheightfallbacks
+    shortNames:
+      - bhf
+    singular: blockheightfallback
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: BlockHeightFallback is the Schema for the blockheightfallbacks
+            API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: BlockHeightFallbackSpec defines the desired state of BlockHeightFallback
+              properties:
+                blockHeight:
+                  description: BlockHeight
+                  format: int64
+                  type: integer
+                chain:
+                  description: Chain
+                  type: string
+                deployMethod:
+                  description: DeployMethod
+                  type: string
+                image:
+                  description: Image
+                  type: string
+                namespace:
+                  description: Namespace
+                  type: string
+                node:
+                  description: Node
+                  type: string
+                pullPolicy:
+                  description: PullPolicy
+                  type: string
+              required:
+                - blockHeight
+                - chain
+                - deployMethod
+                - namespace
+                - node
+              type: object
+            status:
+              description: BlockHeightFallbackStatus defines the observed state of BlockHeightFallback
+              properties:
+                endTime:
+                  description: EndTime
+                  format: date-time
+                  type: string
+                startTime:
+                  description: StartTime
+                  format: date-time
+                  type: string
+                status:
+                  description: Status
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: citanodes.citacloud.rivtower.com
+spec:
+  group: citacloud.rivtower.com
+  names:
+    kind: CitaNode
+    listKind: CitaNodeList
+    plural: citanodes
+    shortNames:
+      - cn
+    singular: citanode
+  scope: Namespaced
+  versions:
+    - additionalPrinterColumns:
+        - jsonPath: .metadata.creationTimestamp
+          name: Age
+          type: date
+        - jsonPath: .status.status
+          name: Status
+          type: string
+      name: v1
+      schema:
+        openAPIV3Schema:
+          description: CitaNode is the Schema for the citanodes API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: CitaNodeSpec defines the desired state of CitaNode
+              properties:
+                chainName:
+                  description: chain name
+                  type: string
+                configMapRef:
+                  description: config.toml && kms.db configmap ref
+                  type: string
+                consensusType:
+                  description: ConsensusType
+                  enum:
+                    - BFT
+                    - Raft
+                  type: string
+                desiredState:
+                  description: desire status
+                  enum:
+                    - Running
+                    - Stopped
+                  type: string
+                enableTls:
+                  description: EnableTLS
+                  type: boolean
+                imageInfo:
+                  description: ImageInfo
+                  properties:
+                    consensusImage:
+                      description: ConsensusImage the image of consensus container
+                      type: string
+                    controllerImage:
+                      description: ControllerImage the image of controller container
+                      type: string
+                    executorImage:
+                      description: ExecutorImage the image of executor container
+                      type: string
+                    kmsImage:
+                      description: KmsImage the image of kms container
+                      type: string
+                    networkImage:
+                      description: NetworkImage the image of network container
+                      type: string
+                    pullPolicy:
+                      description: PullPolicy
+                      type: string
+                    storageImage:
+                      description: StorageImage the image of storage container
+                      type: string
+                  type: object
+                logLevel:
+                  default: info
+                  description: log level
+                  type: string
+                storageClassName:
+                  description: storage class name
+                  type: string
+                storageSize:
+                  description: storage size
+                  format: int64
+                  type: integer
+              required:
+                - chainName
+                - configMapRef
+                - consensusType
+                - desiredState
+                - storageClassName
+                - storageSize
+              type: object
+            status:
+              description: CitaNodeStatus defines the observed state of CitaNode
+              properties:
+                conditions:
+                  description: Conditions is a set of Condition instances.
+                  items:
+                    description: "Condition represents an observation of an object's
+                    state. Conditions are an extension mechanism intended to be used
+                    when the details of an observation are not a priori known or would
+                    not apply to all instances of a given Kind. \n Conditions should
+                    be added to explicitly convey properties that users and components
+                    care about rather than requiring those properties to be inferred
+                    from other observations. Once defined, the meaning of a Condition
+                    can not be changed arbitrarily - it becomes part of the API, and
+                    has the same backwards- and forwards-compatibility concerns of
+                    any other part of the API."
+                    properties:
+                      lastTransitionTime:
+                        format: date-time
+                        type: string
+                      message:
+                        type: string
+                      reason:
+                        description: ConditionReason is intended to be a one-word, CamelCase
+                          representation of the category of cause of the current status.
+                          It is intended to be used in concise output, such as one-line
+                          kubectl get output, and in summarizing occurrences of causes.
+                        type: string
+                      status:
+                        type: string
+                      type:
+                        description: "ConditionType is the type of the condition and
+                        is typically a CamelCased word or short phrase. \n Condition
+                        types should indicate state in the \"abnormal-true\" polarity.
+                        For example, if the condition indicates when a policy is invalid,
+                        the \"is valid\" case is probably the norm, so the condition
+                        should be called \"Invalid\"."
+                        type: string
+                    required:
+                      - status
+                      - type
+                    type: object
+                  type: array
+                status:
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: restores.citacloud.rivtower.com
+spec:
+  group: citacloud.rivtower.com
+  names:
+    kind: Restore
+    listKind: RestoreList
+    plural: restores
+    singular: restore
+  scope: Namespaced
+  versions:
+    - name: v1
+      schema:
+        openAPIV3Schema:
+          description: Restore is the Schema for the restores API
+          properties:
+            apiVersion:
+              description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+              type: string
+            kind:
+              description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+              type: string
+            metadata:
+              type: object
+            spec:
+              description: RestoreSpec defines the desired state of Restore
+              properties:
+                action:
+                  description: Action
+                  type: string
+                backup:
+                  description: Backup
+                  type: string
+                chain:
+                  description: Chain
+                  type: string
+                deployMethod:
+                  description: DeployMethod
+                  type: string
+                image:
+                  description: Image
+                  type: string
+                namespace:
+                  description: Namespace
+                  type: string
+                node:
+                  description: Node
+                  type: string
+                pullPolicy:
+                  description: PullPolicy
+                  type: string
+              required:
+                - backup
+                - chain
+                - deployMethod
+                - namespace
+                - node
+              type: object
+            status:
+              description: RestoreStatus defines the observed state of Restore
+              properties:
+                endTime:
+                  description: EndTime
+                  format: date-time
+                  type: string
+                startTime:
+                  description: StartTime
+                  format: date-time
+                  type: string
+                status:
+                  description: Status
+                  type: string
+              type: object
+          type: object
+      served: true
+      storage: true
+      subresources:
+        status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+

@@ -20,3 +20,4 @@ header:
     - 'vendor/**'
     - 'config/**'
     - 'doc/DEV_DOC_CN.md'
+    - 'deploy/**'
