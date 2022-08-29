@@ -26,6 +26,3 @@ resources:
     cpu: 10m
     # resources.requests.memory -- memory request
     memory: 64Mi
-
-# serviceAccountName -- You can specify the service account.
-serviceAccountName: cita-node-operator-sa

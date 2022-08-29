@@ -1,0 +1,13 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Backup
+metadata:
+  name: backup-sample
+  namespace: app-rivspace
+spec:
+  chain: chain-734116911817822208
+  namespace: app-rivspace
+  node: chain-734116911817822208-0
+  deployMethod: python
+  storageClass: csi-nas
+  pullPolicy: Always
+

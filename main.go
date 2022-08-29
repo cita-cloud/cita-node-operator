@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"go.uber.org/zap/zapcore"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -59,6 +60,7 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	opts := zap.Options{
 		Development: true,
+		TimeEncoder: zapcore.ISO8601TimeEncoder,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -86,6 +88,27 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "CitaNode")
 		os.Exit(1)
 	}
+	if err = (&controllers.BlockHeightFallbackReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "BlockHeightFallback")
+		os.Exit(1)
+	}
+	if err = (&controllers.BackupReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Backup")
+		os.Exit(1)
+	}
+	if err = (&controllers.RestoreReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Restore")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -103,3 +126,35 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+//func deleteFinishedJob(ctx context.Context, client client.Client) {
+//	timeTickerChan := time.Tick(time.Second * 30)
+//	for {
+//		<-timeTickerChan
+//
+//	}
+//}
+//
+//type Fn func(ctx context.Context, client client.Client) error
+//
+//type MyTicker struct {
+//	MyTick *time.Ticker
+//	Runner Fn
+//	Client client.Client
+//}
+//
+//func NewMyTick(interval int, f Fn) *MyTicker {
+//	return &MyTicker{
+//		MyTick: time.NewTicker(time.Duration(interval) * time.Second),
+//		Runner: f,
+//	}
+//}
+//
+//func (t *MyTicker) Start() {
+//	for {
+//		select {
+//		case <-t.MyTick.C:
+//			t.Runner(context.Background(), t.Client)
+//		}
+//	}
+//}

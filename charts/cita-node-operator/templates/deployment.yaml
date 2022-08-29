@@ -19,7 +19,7 @@ spec:
         {{- include "cita-node-operator.selectorLabels" . | nindent 8 }}
     spec:
       terminationGracePeriodSeconds: 10
-      serviceAccountName: {{ .Values.serviceAccountName }}
+      serviceAccountName: cita-node-operator-sa
       securityContext:
         runAsNonRoot: true
       containers:

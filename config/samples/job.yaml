@@ -1,0 +1,37 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cita-job
+  namespace: cita
+spec:
+  template:
+    spec:
+      serviceAccountName: cita-cloud-operator-sa
+      containers:
+        - name: cloud-job
+          image: registry.devops.rivtower.com/cita-cloud/operator/cloud-job:v0.0.1
+          imagePullPolicy: Always
+          command:
+            - /fallback
+          args:
+            # namespace
+            - --namespace
+            - cita
+            # node-name
+            - --node-name
+            - jj
+            # deploy method
+            - --deploy-method
+            - helm
+            # block height
+            - --block-height
+            - "30"
+          volumeMounts:
+            - name: datadir
+              mountPath: /mnt
+      volumes:
+        - name: datadir
+          persistentVolumeClaim:
+            claimName: local-pvc
+      restartPolicy: Never
+  backoffLimit: 1
