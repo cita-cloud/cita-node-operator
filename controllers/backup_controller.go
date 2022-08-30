@@ -222,7 +222,7 @@ func (r *BackupReconciler) setDefaultStatus(backup *citacloudv1.Backup) bool {
 }
 
 func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1.Backup) (*v1.Job, error) {
-	labels := labelsForBackup(backup)
+	labels := LabelsForNode(backup.Spec.Chain, backup.Spec.Node)
 
 	var resourceRequirements corev1.ResourceRequirements
 	var pvcSourceName string
@@ -389,10 +389,6 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 		return nil, err
 	}
 	return job, nil
-}
-
-func labelsForBackup(backup *citacloudv1.Backup) map[string]string {
-	return map[string]string{"app.kubernetes.io/node-name": backup.Spec.Chain, "app.kubernetes.io/node-node": backup.Spec.Node}
 }
 
 // SetupWithManager sets up the controller with the Manager.

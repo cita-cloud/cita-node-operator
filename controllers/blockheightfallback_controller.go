@@ -158,7 +158,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 }
 
 func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (*v1.Job, error) {
-	labels := labelsForBlockHeightFallback(bhf)
+	labels := LabelsForNode(bhf.Spec.Chain, bhf.Spec.Node)
 
 	volumes, err := r.getVolumes(ctx, bhf)
 	if err != nil {
@@ -351,10 +351,6 @@ func filterCryptoAndConsensus(containers []corev1.Container) (string, string) {
 		}
 	}
 	return crypto, consensus
-}
-
-func labelsForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) map[string]string {
-	return map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.Chain}
 }
 
 func (r *BlockHeightFallbackReconciler) setDefaultSpec(bhf *citacloudv1.BlockHeightFallback) bool {

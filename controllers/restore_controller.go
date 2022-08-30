@@ -196,7 +196,7 @@ func (r *RestoreReconciler) setDefaultStatus(restore *citacloudv1.Restore) bool 
 }
 
 func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citacloudv1.Restore) (*v1.Job, error) {
-	labels := labelsForRestore(restore)
+	labels := LabelsForNode(restore.Spec.Chain, restore.Spec.Node)
 
 	var pvcDestName string
 
@@ -281,10 +281,6 @@ func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citaclou
 		return nil, err
 	}
 	return job, nil
-}
-
-func labelsForRestore(restore *citacloudv1.Restore) map[string]string {
-	return map[string]string{"app.kubernetes.io/node-name": restore.Spec.Chain, "app.kubernetes.io/node-node": restore.Spec.Node}
 }
 
 // SetupWithManager sets up the controller with the Manager.
