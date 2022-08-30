@@ -41,6 +41,8 @@ type BlockHeightFallbackSpec struct {
 	Image string `json:"image,omitempty"`
 	// PullPolicy
 	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
+	// ttlSecondsAfterFinished clean up finished Jobs (either Complete or Failed) automatically
+	TTLSecondsAfterFinished int64 `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
 // BlockHeightFallbackStatus defines the observed state of BlockHeightFallback
