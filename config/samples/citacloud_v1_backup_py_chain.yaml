@@ -10,4 +10,5 @@ spec:
   deployMethod: python
   storageClass: csi-nas
   pullPolicy: Always
+  ttlSecondsAfterFinished: 20
 

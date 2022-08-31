@@ -59,6 +59,11 @@ spec:
               storageClass:
                 description: StorageClass
                 type: string
+              ttlSecondsAfterFinished:
+                description: ttlSecondsAfterFinished clean up finished Jobs (either
+                  Complete or Failed) automatically
+                format: int64
+                type: integer
             required:
             - chain
             - deployMethod

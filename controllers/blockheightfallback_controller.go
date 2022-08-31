@@ -92,14 +92,19 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if bhf.Status.Status == citacloudv1.JobComplete || bhf.Status.Status == citacloudv1.JobFailed {
-		logger.Info(fmt.Sprintf("blockheightfallback status is finished: [%s]", bhf.Status.Status))
-		return ctrl.Result{}, nil
-	}
-
 	// Check if the job already exists, if not create a new one
 	foundJob := &v1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: bhf.Name, Namespace: bhf.Namespace}, foundJob)
+
+	if bhf.Status.Status == citacloudv1.JobComplete || bhf.Status.Status == citacloudv1.JobFailed {
+		logger.Info(fmt.Sprintf("blockheightfallback status is finished: [%s]", bhf.Status.Status))
+		// will delete job if job exist
+		if err == nil && foundJob != nil {
+			go CleanJob(ctx, r.Client, foundJob, bhf.Spec.TTLSecondsAfterFinished)
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new job
 		job, err := r.jobForBlockHeightFallback(ctx, bhf)
@@ -135,33 +140,9 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
-
-		// delete job
-		dp := metav1.DeletePropagationForeground
-		do := &client.DeleteOptions{}
-		do.ApplyOptions([]client.DeleteOption{
-			client.PropagationPolicy(dp),
-		})
-		err = r.Delete(ctx, job, do)
-		if err != nil {
-			logger.Error(err, "delete job failed")
-			return ctrl.Result{}, err
-		}
 	} else if job.Status.Succeeded == 1 {
 		cur.Status.Status = citacloudv1.JobComplete
 		cur.Status.EndTime = job.Status.CompletionTime
-
-		// delete job
-		dp := metav1.DeletePropagationForeground
-		do := &client.DeleteOptions{}
-		do.ApplyOptions([]client.DeleteOption{
-			client.PropagationPolicy(dp),
-		})
-		err = r.Delete(ctx, job, do)
-		if err != nil {
-			logger.Error(err, "delete job failed")
-			return ctrl.Result{}, err
-		}
 	}
 	if !IsEqual(cur, bhf) {
 		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
@@ -177,7 +158,7 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 }
 
 func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (*v1.Job, error) {
-	labels := labelsForBlockHeightFallback(bhf)
+	labels := LabelsForNode(bhf.Spec.Chain, bhf.Spec.Node)
 
 	volumes, err := r.getVolumes(ctx, bhf)
 	if err != nil {
@@ -372,10 +353,6 @@ func filterCryptoAndConsensus(containers []corev1.Container) (string, string) {
 	return crypto, consensus
 }
 
-func labelsForBlockHeightFallback(bhf *citacloudv1.BlockHeightFallback) map[string]string {
-	return map[string]string{"app.kubernetes.io/chain-name": bhf.Spec.Chain}
-}
-
 func (r *BlockHeightFallbackReconciler) setDefaultSpec(bhf *citacloudv1.BlockHeightFallback) bool {
 	updateFlag := false
 	if bhf.Spec.Image == "" {
@@ -384,6 +361,10 @@ func (r *BlockHeightFallbackReconciler) setDefaultSpec(bhf *citacloudv1.BlockHei
 	}
 	if bhf.Spec.PullPolicy == "" {
 		bhf.Spec.PullPolicy = corev1.PullIfNotPresent
+	}
+	if bhf.Spec.TTLSecondsAfterFinished == 0 {
+		bhf.Spec.TTLSecondsAfterFinished = 30
+		updateFlag = true
 	}
 	return updateFlag
 }

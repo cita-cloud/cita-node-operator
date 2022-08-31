@@ -96,14 +96,19 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	if restore.Status.Status == citacloudv1.JobComplete || restore.Status.Status == citacloudv1.JobFailed {
-		logger.Info(fmt.Sprintf("restore status is finished: [%s]", restore.Status.Status))
-		return ctrl.Result{}, nil
-	}
-
 	// Check if the job already exists, if not create a new one
 	foundJob := &v1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: restore.Name, Namespace: restore.Namespace}, foundJob)
+
+	if restore.Status.Status == citacloudv1.JobComplete || restore.Status.Status == citacloudv1.JobFailed {
+		logger.Info(fmt.Sprintf("restore status is finished: [%s]", restore.Status.Status))
+		// will delete job if job exist
+		if err == nil && foundJob != nil {
+			go CleanJob(ctx, r.Client, foundJob, restore.Spec.TTLSecondsAfterFinished)
+		}
+		return ctrl.Result{}, nil
+	}
+
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
 		job, err := r.jobForRestore(ctx, restore)
@@ -138,34 +143,9 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
-
-		// delete job
-		dp := metav1.DeletePropagationForeground
-		do := &client.DeleteOptions{}
-		do.ApplyOptions([]client.DeleteOption{
-			client.PropagationPolicy(dp),
-		})
-		err = r.Delete(ctx, job, do)
-		if err != nil {
-			logger.Error(err, "delete job failed")
-			return ctrl.Result{}, err
-		}
-
 	} else if job.Status.Succeeded == 1 {
 		cur.Status.Status = citacloudv1.JobComplete
 		cur.Status.EndTime = job.Status.CompletionTime
-
-		// delete job
-		dp := metav1.DeletePropagationForeground
-		do := &client.DeleteOptions{}
-		do.ApplyOptions([]client.DeleteOption{
-			client.PropagationPolicy(dp),
-		})
-		err = r.Delete(ctx, job, do)
-		if err != nil {
-			logger.Error(err, "delete job failed")
-			return ctrl.Result{}, err
-		}
 	}
 	if !IsEqual(cur, restore) {
 		logger.Info(fmt.Sprintf("update status: [%s]", cur.Status.Status))
@@ -194,6 +174,10 @@ func (r *RestoreReconciler) setDefaultSpec(restore *citacloudv1.Restore) bool {
 		restore.Spec.PullPolicy = corev1.PullIfNotPresent
 		updateFlag = true
 	}
+	if restore.Spec.TTLSecondsAfterFinished == 0 {
+		restore.Spec.TTLSecondsAfterFinished = 30
+		updateFlag = true
+	}
 	return updateFlag
 }
 
@@ -212,7 +196,7 @@ func (r *RestoreReconciler) setDefaultStatus(restore *citacloudv1.Restore) bool 
 }
 
 func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citacloudv1.Restore) (*v1.Job, error) {
-	labels := labelsForRestore(restore)
+	labels := LabelsForNode(restore.Spec.Chain, restore.Spec.Node)
 
 	var pvcDestName string
 
@@ -297,10 +281,6 @@ func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citaclou
 		return nil, err
 	}
 	return job, nil
-}
-
-func labelsForRestore(restore *citacloudv1.Restore) map[string]string {
-	return map[string]string{"app.kubernetes.io/node-name": restore.Spec.Chain, "app.kubernetes.io/node-node": restore.Spec.Node}
 }
 
 // SetupWithManager sets up the controller with the Manager.
