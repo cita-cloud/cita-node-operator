@@ -19,6 +19,7 @@ package node
 import (
 	"context"
 	"fmt"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -46,4 +47,6 @@ type Node interface {
 	Start(ctx context.Context) error
 	Backup(ctx context.Context, action Action) error
 	Restore(ctx context.Context, action Action) error
+	GetAccount(ctx context.Context) (error, *corev1.ConfigMap)
+	UpdateAccount(ctx context.Context, cm *corev1.ConfigMap) error
 }

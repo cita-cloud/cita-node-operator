@@ -47,6 +47,23 @@ type cloudConfigNode struct {
 	chain     string
 }
 
+func (c *cloudConfigNode) UpdateAccount(ctx context.Context, cm *corev1.ConfigMap) error {
+	err := c.Update(ctx, cm)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *cloudConfigNode) GetAccount(ctx context.Context) (error, *corev1.ConfigMap) {
+	cm := &corev1.ConfigMap{}
+	err := c.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-account", c.name), Namespace: c.namespace}, cm)
+	if err != nil {
+		return err, nil
+	}
+	return nil, cm
+}
+
 func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error {
 	if action == node.StopAndStart {
 		if err := c.Stop(ctx); err != nil {

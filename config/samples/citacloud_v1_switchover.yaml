@@ -1,0 +1,6 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Switchover
+metadata:
+  name: switchover-sample
+spec:
+  # TODO(user): Add fields here

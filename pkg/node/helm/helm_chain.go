@@ -48,6 +48,16 @@ type helmNode struct {
 	replicas  *int32
 }
 
+func (h *helmNode) UpdateAccount(ctx context.Context, cm *corev1.ConfigMap) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (h *helmNode) GetAccount(ctx context.Context) (error, *corev1.ConfigMap) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
 	if action == node.StopAndStart {
 		if err := h.Stop(ctx); err != nil {

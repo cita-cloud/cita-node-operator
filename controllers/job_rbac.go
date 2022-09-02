@@ -169,6 +169,11 @@ func (r *JobRbac) generateRole() *rbacv1.ClusterRole {
 		APIGroups: []string{""},
 		Resources: []string{"pods"},
 	}
+	configMapPR := rbacv1.PolicyRule{
+		Verbs:     []string{"get", "list", "watch", "update"},
+		APIGroups: []string{""},
+		Resources: []string{"configmaps"},
+	}
 
 	role := &rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
@@ -178,6 +183,7 @@ func (r *JobRbac) generateRole() *rbacv1.ClusterRole {
 			stsPR,
 			depPR,
 			podPR,
+			configMapPR,
 		},
 	}
 	return role

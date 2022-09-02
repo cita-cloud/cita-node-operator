@@ -23,6 +23,12 @@ func LabelsForNode(chainName, nodeName string) map[string]string {
 	}
 }
 
+func LabelsForChain(chainName string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/chain-name": chainName,
+	}
+}
+
 // MergeLabels merges all labels together and returns a new label.
 func MergeLabels(allLabels ...map[string]string) map[string]string {
 	lb := make(map[string]string)
