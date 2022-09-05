@@ -5,8 +5,7 @@ metadata:
   namespace: app-rivspace
 spec:
   chain: chain-734116911817822208
-  namespace: app-rivspace
   node: chain-734116911817822208-0
-  blockHeight: 1488875
+  blockHeight: 2000000
   deployMethod: python
   pullPolicy: Always

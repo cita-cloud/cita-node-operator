@@ -5,7 +5,6 @@ metadata:
   namespace: cita
 spec:
   chain: test-chain-zenoh-bft
-  namespace: cita
   node: test-chain-zenoh-bft-node0
   deployMethod: cloud-config
   storageClass: nas-client-provisioner

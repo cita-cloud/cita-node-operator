@@ -6,6 +6,8 @@ on:
       - master
       - main
 #  pull_request:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 jobs:
   build-latest:
@@ -32,4 +34,6 @@ jobs:
         uses: docker/setup-buildx-action@v1
       - name: "Building docker images"
         run: |
+          set -e
           make image-latest
+          make job-image-latest

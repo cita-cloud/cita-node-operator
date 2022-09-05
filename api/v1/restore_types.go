@@ -29,8 +29,6 @@ import (
 type RestoreSpec struct {
 	// Chain
 	Chain string `json:"chain"`
-	// Namespace
-	Namespace string `json:"namespace"`
 	// Node
 	Node string `json:"node"`
 	// DeployMethod

@@ -34,4 +34,4 @@ const (
 	CITANodeJobClusterRoleBinding = "cita-node-job"
 )
 
-const DefaultImage = "registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.1"
+const DefaultImage = "citacloud/cita-node-job:latest"
