@@ -223,7 +223,7 @@ var _ = Describe("BlockHeightFallback controller", func() {
 		It("Should create a Job by controller", func() {
 			By("Prepare a cita-cloud chain")
 
-			createCloudConfigChain(ctx)
+			createCloudConfigChain(ctx, ChainName)
 
 			By("By creating a new BlockHeightFallback for cita-cloud node")
 			ctx := context.Background()
@@ -488,14 +488,14 @@ func createPythonChain(ctx context.Context, chainName string, create bool) {
 	}
 }
 
-func createCloudConfigChain(ctx context.Context) {
+func createCloudConfigChain(ctx context.Context, chainName string) {
 	for i := 0; i < 4; i++ {
-		stsName := fmt.Sprintf("%s-%d", ChainName, i)
+		stsName := fmt.Sprintf("%s-%d", chainName, i)
 		sts := &appsv1.StatefulSet{}
 		sts.Name = stsName
 		sts.Namespace = ChainNamespace
 
-		labels := map[string]string{"app.kubernetes.io/chain-name": ChainName}
+		labels := map[string]string{"app.kubernetes.io/chain-name": chainName}
 		sts.Labels = labels
 
 		sts.Spec = appsv1.StatefulSetSpec{
