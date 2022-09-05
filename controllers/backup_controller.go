@@ -154,7 +154,7 @@ func (r *BackupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		// get backup size from pod annotations
 		podList := &corev1.PodList{}
 		podOpts := []client.ListOption{
-			client.InNamespace(backup.Spec.Namespace),
+			client.InNamespace(backup.Namespace),
 			client.MatchingLabels(map[string]string{"job-name": backup.Name, "controller-uid": string(job.UID)}),
 		}
 		if err := r.List(ctx, podList, podOpts...); err != nil {
@@ -230,7 +230,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 	if backup.Spec.DeployMethod == chainpkg.PythonOperator {
 		deployList := &appsv1.DeploymentList{}
 		deployOpts := []client.ListOption{
-			client.InNamespace(backup.Spec.Namespace),
+			client.InNamespace(backup.Namespace),
 			client.MatchingLabels(map[string]string{"chain_name": backup.Spec.Chain, "node_name": backup.Spec.Node}),
 		}
 		if err := r.List(ctx, deployList, deployOpts...); err != nil {
@@ -250,7 +250,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 			return nil, fmt.Errorf("cann't get deployment's pvc")
 		}
 		pvc := &corev1.PersistentVolumeClaim{}
-		err := r.Get(ctx, types.NamespacedName{Name: pvcSourceName, Namespace: backup.Spec.Namespace}, pvc)
+		err := r.Get(ctx, types.NamespacedName{Name: pvcSourceName, Namespace: backup.Namespace}, pvc)
 		if err != nil {
 			return nil, err
 		}
@@ -258,7 +258,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 	} else {
 		stsList := &appsv1.StatefulSetList{}
 		stsOpts := []client.ListOption{
-			client.InNamespace(backup.Spec.Namespace),
+			client.InNamespace(backup.Namespace),
 			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": backup.Spec.Chain, "app.kubernetes.io/chain-node": backup.Spec.Node}),
 		}
 		if err := r.List(ctx, stsList, stsOpts...); err != nil {
@@ -279,7 +279,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 	destPVC := &corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backup.Name,
-			Namespace: backup.Spec.Namespace,
+			Namespace: backup.Namespace,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -343,7 +343,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 							},
 							Args: []string{
 								"backup",
-								"--namespace", backup.Spec.Namespace,
+								"--namespace", backup.Namespace,
 								"--chain", backup.Spec.Chain,
 								"--node", backup.Spec.Node,
 								"--deploy-method", string(backup.Spec.DeployMethod),

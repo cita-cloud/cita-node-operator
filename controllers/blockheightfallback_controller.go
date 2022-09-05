@@ -200,7 +200,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 							},
 							Args: []string{
 								"fallback",
-								"--namespace", bhf.Spec.Namespace,
+								"--namespace", bhf.Namespace,
 								"--chain", bhf.Spec.Chain,
 								"--deploy-method", string(bhf.Spec.DeployMethod),
 								"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
@@ -306,21 +306,21 @@ func (r *BlockHeightFallbackReconciler) getCryptoAndConsensus(ctx context.Contex
 	var crypto, consensus string
 	if bhf.Spec.DeployMethod == nodepkg.Helm {
 		sts := &appsv1.StatefulSet{}
-		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Chain, Namespace: bhf.Spec.Namespace}, sts)
+		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Chain, Namespace: bhf.Namespace}, sts)
 		if err != nil {
 			return "", "", err
 		}
 		crypto, consensus = filterCryptoAndConsensus(sts.Spec.Template.Spec.Containers)
 	} else if bhf.Spec.DeployMethod == nodepkg.PythonOperator {
 		dep := &appsv1.Deployment{}
-		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Node, Namespace: bhf.Spec.Namespace}, dep)
+		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Node, Namespace: bhf.Namespace}, dep)
 		if err != nil {
 			return "", "", err
 		}
 		crypto, consensus = filterCryptoAndConsensus(dep.Spec.Template.Spec.Containers)
 	} else if bhf.Spec.DeployMethod == nodepkg.CloudConfig {
 		sts := &appsv1.StatefulSet{}
-		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Node, Namespace: bhf.Spec.Namespace}, sts)
+		err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Node, Namespace: bhf.Namespace}, sts)
 		if err != nil {
 			return "", "", err
 		}
@@ -386,7 +386,7 @@ func (r *BlockHeightFallbackReconciler) setDefaultStatus(bhf *citacloudv1.BlockH
 func (r *BlockHeightFallbackReconciler) getHelmPVC(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, error) {
 	// find chain's statefuleset
 	sts := &appsv1.StatefulSet{}
-	err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Chain, Namespace: bhf.Spec.Namespace}, sts)
+	err := r.Get(ctx, types.NamespacedName{Name: bhf.Spec.Chain, Namespace: bhf.Namespace}, sts)
 	if err != nil {
 		return "", err
 	}
@@ -402,7 +402,7 @@ func (r *BlockHeightFallbackReconciler) getPyPVC(ctx context.Context, bhf *citac
 	// find chain's statefuleset
 	deployList := &appsv1.DeploymentList{}
 	deployOpts := []client.ListOption{
-		client.InNamespace(bhf.Spec.Namespace),
+		client.InNamespace(bhf.Namespace),
 		client.MatchingLabels(map[string]string{"chain_name": bhf.Spec.Chain}),
 	}
 	if err := r.List(ctx, deployList, deployOpts...); err != nil {

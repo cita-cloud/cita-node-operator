@@ -50,20 +50,21 @@ spec:
               image:
                 description: Image
                 type: string
-              namespace:
-                description: Namespace
-                type: string
               node:
                 description: Node
                 type: string
               pullPolicy:
                 description: PullPolicy
                 type: string
+              ttlSecondsAfterFinished:
+                description: ttlSecondsAfterFinished clean up finished Jobs (either
+                  Complete or Failed) automatically
+                format: int64
+                type: integer
             required:
             - backup
             - chain
             - deployMethod
-            - namespace
             - node
             type: object
           status:

@@ -52,7 +52,6 @@ var _ = Describe("Backup controller", func() {
 				},
 				Spec: citacloudv1.BackupSpec{
 					Chain:        BackupChainName,
-					Namespace:    BackupChainNamespace,
 					DeployMethod: chainpkg.PythonOperator,
 					Node:         node,
 					StorageClass: "nfs-csi",

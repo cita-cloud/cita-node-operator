@@ -253,7 +253,7 @@ func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citaclou
 							},
 							Args: []string{
 								"restore",
-								"--namespace", restore.Spec.Namespace,
+								"--namespace", restore.Namespace,
 								"--node", restore.Spec.Chain,
 								"--node", restore.Spec.Node,
 								"--deploy-method", string(restore.Spec.DeployMethod),

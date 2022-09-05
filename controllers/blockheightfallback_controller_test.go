@@ -69,7 +69,6 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
 					Chain:        ChainName,
-					Namespace:    ChainNamespace,
 					BlockHeight:  BlockHeight,
 					DeployMethod: chainpkg.Helm,
 					Node:         node,
@@ -152,7 +151,6 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
 					Chain:        ChainName,
-					Namespace:    ChainNamespace,
 					BlockHeight:  BlockHeight,
 					DeployMethod: chainpkg.PythonOperator,
 					Node:         node,
@@ -236,7 +234,6 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
 					Chain:        ChainName,
-					Namespace:    ChainNamespace,
 					BlockHeight:  BlockHeight,
 					DeployMethod: chainpkg.CloudConfig,
 					Node:         node,
@@ -315,7 +312,6 @@ var _ = Describe("BlockHeightFallback controller", func() {
 				},
 				Spec: citacloudv1.BlockHeightFallbackSpec{
 					Chain:        ChainName,
-					Namespace:    ChainNamespace,
 					BlockHeight:  BlockHeight,
 					DeployMethod: chainpkg.PythonOperator,
 					Node:         oneNode,

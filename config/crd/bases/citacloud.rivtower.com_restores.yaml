@@ -50,9 +50,6 @@ spec:
               image:
                 description: Image
                 type: string
-              namespace:
-                description: Namespace
-                type: string
               node:
                 description: Node
                 type: string
@@ -68,7 +65,6 @@ spec:
             - backup
             - chain
             - deployMethod
-            - namespace
             - node
             type: object
           status:

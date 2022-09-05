@@ -29,8 +29,6 @@ import (
 type BlockHeightFallbackSpec struct {
 	// Chain
 	Chain string `json:"chain"`
-	// Namespace
-	Namespace string `json:"namespace"`
 	// Node
 	Node string `json:"node"`
 	// BlockHeight
