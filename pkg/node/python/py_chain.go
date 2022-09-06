@@ -47,12 +47,11 @@ type pyNode struct {
 	chain     string
 }
 
-func (p *pyNode) UpdateAccount(ctx context.Context, cm *corev1.ConfigMap) error {
-	//TODO implement me
-	panic("implement me")
+func (p *pyNode) GetName() string {
+	return p.name
 }
 
-func (p *pyNode) GetAccount(ctx context.Context) (error, *corev1.ConfigMap) {
+func (p *pyNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
 	//TODO implement me
 	panic("implement me")
 }

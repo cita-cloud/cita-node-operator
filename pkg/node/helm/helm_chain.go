@@ -48,12 +48,11 @@ type helmNode struct {
 	replicas  *int32
 }
 
-func (h *helmNode) UpdateAccount(ctx context.Context, cm *corev1.ConfigMap) error {
-	//TODO implement me
-	panic("implement me")
+func (h *helmNode) GetName() string {
+	return h.name
 }
 
-func (h *helmNode) GetAccount(ctx context.Context) (error, *corev1.ConfigMap) {
+func (h *helmNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
 	//TODO implement me
 	panic("implement me")
 }

@@ -2,6 +2,7 @@ package switchover
 
 import (
 	"context"
+	"fmt"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -18,15 +19,7 @@ func NewSwitchoverMgr() *switchoverMgr {
 }
 
 func (s *switchoverMgr) Switch(ctx context.Context, sourceNode, destNode node.Node) error {
-	err, sourceAccount := sourceNode.GetAccount(ctx)
-	if err != nil {
-		return err
-	}
-	err, destAccount := destNode.GetAccount(ctx)
-	if err != nil {
-		return err
-	}
-	err = sourceNode.Stop(ctx)
+	err := sourceNode.Stop(ctx)
 	if err != nil {
 		return err
 	}
@@ -42,13 +35,12 @@ func (s *switchoverMgr) Switch(ctx context.Context, sourceNode, destNode node.No
 	if err != nil {
 		return err
 	}
-	// swap account configmap content
-	sourceAccount.Data, destAccount.Data = destAccount.Data, sourceAccount.Data
-	err = sourceNode.UpdateAccount(ctx, sourceAccount)
+	// swap account configmap for two node
+	err = sourceNode.UpdateAccountConfigmap(ctx, fmt.Sprintf("%s-account", destNode.GetName()))
 	if err != nil {
 		return err
 	}
-	err = destNode.UpdateAccount(ctx, destAccount)
+	err = destNode.UpdateAccountConfigmap(ctx, fmt.Sprintf("%s-account", sourceNode.GetName()))
 	if err != nil {
 		return err
 	}

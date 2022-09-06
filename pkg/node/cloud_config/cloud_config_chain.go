@@ -47,21 +47,31 @@ type cloudConfigNode struct {
 	chain     string
 }
 
-func (c *cloudConfigNode) UpdateAccount(ctx context.Context, cm *corev1.ConfigMap) error {
-	err := c.Update(ctx, cm)
+func (c *cloudConfigNode) GetName() string {
+	return c.name
+}
+
+func (c *cloudConfigNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
+	// find node
+	sts := &appsv1.StatefulSet{}
+	err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
 	if err != nil {
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("get node %s/%s failed", c.namespace, c.name))
+		return err
+	}
+	volumes := sts.Spec.Template.Spec.Volumes
+	for _, vol := range volumes {
+		if vol.Name == "node-account" {
+			vol.VolumeSource.ConfigMap.LocalObjectReference.Name = newConfigmap
+		}
+	}
+	sts.Spec.Template.Spec.Volumes = volumes
+	err = c.Update(ctx, sts)
+	if err != nil {
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("update node %s/%s account configmap failed", c.namespace, c.name))
 		return err
 	}
 	return nil
-}
-
-func (c *cloudConfigNode) GetAccount(ctx context.Context) (error, *corev1.ConfigMap) {
-	cm := &corev1.ConfigMap{}
-	err := c.Get(ctx, types.NamespacedName{Name: fmt.Sprintf("%s-account", c.name), Namespace: c.namespace}, cm)
-	if err != nil {
-		return err, nil
-	}
-	return nil, cm
 }
 
 func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error {
