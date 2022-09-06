@@ -1,0 +1,21 @@
+apiVersion: v1
+entries:
+  cita-node-operator:
+  - apiVersion: v2
+    appVersion: 0.0.1
+    created: "2022-09-06T02:26:33.01084762Z"
+    description: A Helm chart for Cita-Cloud Node Operator
+    digest: 5bdf037c91266ed9b7224c3601b4ce8502f3061b674bef07778db4b88f8b2aa8
+    home: https://github.com/cita-cloud/cita-node-operator
+    keywords:
+    - cita-cloud
+    kubeVersion: '>=1.18.0-0'
+    maintainers:
+    - email: contact@rivtower.com
+      name: Rivtower Technologies
+    name: cita-node-operator
+    type: application
+    urls:
+    - https://github.com/cita-cloud/cita-node-operator/releases/download/helm-chart-cita-node-operator-0.0.1/cita-node-operator-0.0.1.tgz
+    version: 0.0.1
+generated: "2022-09-06T02:26:33.01086072Z"
