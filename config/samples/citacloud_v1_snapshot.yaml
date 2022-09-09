@@ -1,0 +1,12 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Snapshot
+metadata:
+  name: snapshot-sample
+spec:
+  chain: chain-734116911817822208
+  node: chain-734116911817822208-0
+  blockHeight: 2000000
+  deployMethod: python
+  storageClass: csi-nas
+  pullPolicy: Always
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot

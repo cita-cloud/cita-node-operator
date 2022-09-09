@@ -37,6 +37,7 @@ func init() {
 		NewBackup(),
 		NewRestore(),
 		NewSwitchover(),
+		NewSnapshot(),
 		// todo: add subcommand
 	)
 }

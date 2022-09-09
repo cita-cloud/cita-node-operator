@@ -30,6 +30,7 @@ type Interface interface {
 	Backup(sourcePath string, destPath string) (int64, error)
 	Restore(sourcePath string, destPath string) error
 	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error
+	Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error)
 }
 
 type Behavior struct {
@@ -155,6 +156,23 @@ func (receiver Behavior) restore(sourcePath string, destPath string) error {
 	}
 	receiver.logger.Info("restore file completed")
 	return nil
+}
+
+func (receiver Behavior) Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error) {
+	receiver.logger.Info(fmt.Sprintf("exec snapshot: [height: %d]...", blockHeight))
+	err := receiver.execer.Command("cloud-op", "state-backup", fmt.Sprintf("%d", blockHeight),
+		"--node-root", nodeRoot,
+		"--config-path", fmt.Sprintf("%s/config.toml", configPath),
+		"--backup-path", backupPath,
+		"--crypto", crypto,
+		"--consensus", consensus).Run()
+	if err != nil {
+		receiver.logger.Error(err, "exec snapshot failed")
+		return 0, err
+	}
+	snapshotSize, err := receiver.calculateSize(backupPath)
+	receiver.logger.Info(fmt.Sprintf("exec snapshot: [height: %d, size: %d] successful", blockHeight, snapshotSize))
+	return snapshotSize, nil
 }
 
 func (receiver Behavior) Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error {
