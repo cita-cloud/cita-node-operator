@@ -2,6 +2,7 @@ apiVersion: citacloud.rivtower.com/v1
 kind: Switchover
 metadata:
   name: switchover-sample
+  namespace: cita
 spec:
   chain: test-chain-zenoh-bft
   sourceNode: test-chain-zenoh-bft-node0
