@@ -48,6 +48,15 @@ type helmNode struct {
 	replicas  *int32
 }
 
+func (h *helmNode) GetName() string {
+	return h.name
+}
+
+func (h *helmNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
 	if action == node.StopAndStart {
 		if err := h.Stop(ctx); err != nil {

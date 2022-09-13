@@ -36,6 +36,7 @@ func init() {
 		NewFallbackCommand(),
 		NewBackup(),
 		NewRestore(),
+		NewSwitchover(),
 		// todo: add subcommand
 	)
 }

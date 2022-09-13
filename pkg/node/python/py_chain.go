@@ -47,6 +47,15 @@ type pyNode struct {
 	chain     string
 }
 
+func (p *pyNode) GetName() string {
+	return p.name
+}
+
+func (p *pyNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 	if action == node.StopAndStart {
 		if err := p.Stop(ctx); err != nil {

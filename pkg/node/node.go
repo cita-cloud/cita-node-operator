@@ -46,4 +46,7 @@ type Node interface {
 	Start(ctx context.Context) error
 	Backup(ctx context.Context, action Action) error
 	Restore(ctx context.Context, action Action) error
+	//GetAccount(ctx context.Context) (error, *corev1.ConfigMap)
+	GetName() string
+	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error
 }
