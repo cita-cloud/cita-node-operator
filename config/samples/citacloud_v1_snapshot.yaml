@@ -2,11 +2,12 @@ apiVersion: citacloud.rivtower.com/v1
 kind: Snapshot
 metadata:
   name: snapshot-sample
+  namespace: cita
 spec:
-  chain: chain-734116911817822208
-  node: chain-734116911817822208-0
-  blockHeight: 2000000
-  deployMethod: python
+  chain: test-chain-zenoh-overlord
+  node: test-chain-zenoh-overlord-node0
+  blockHeight: 50
+  deployMethod: cloud-config
   storageClass: csi-nas
   pullPolicy: Always
   image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
