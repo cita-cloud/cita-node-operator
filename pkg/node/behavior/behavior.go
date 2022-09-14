@@ -159,7 +159,9 @@ func (receiver Behavior) restore(sourcePath string, destPath string) error {
 }
 
 func (receiver Behavior) Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error) {
-	receiver.logger.Info(fmt.Sprintf("exec snapshot: [height: %d]...", blockHeight))
+	receiver.logger.Info(
+		fmt.Sprintf("exec snapshot: [height: %d, node-root: %s, config-path: %s, backup-path: %s, crypto: %s, consensus: %s]...",
+			blockHeight, nodeRoot, configPath, backupPath, crypto, consensus))
 	err := receiver.execer.Command("cloud-op", "state-backup", fmt.Sprintf("%d", blockHeight),
 		"--node-root", nodeRoot,
 		"--config-path", fmt.Sprintf("%s/config.toml", configPath),

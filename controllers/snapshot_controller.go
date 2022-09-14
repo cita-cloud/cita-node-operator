@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"strconv"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -208,6 +209,7 @@ func (r *SnapshotReconciler) setDefaultStatus(snapshot *citacloudv1.Snapshot) bo
 func (r *SnapshotReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&citacloudv1.Snapshot{}).
+		Owns(&v1.Job{}, builder.WithPredicates(jobPredicate())).
 		Complete(r)
 }
 
