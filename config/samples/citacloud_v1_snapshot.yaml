@@ -1,0 +1,13 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Snapshot
+metadata:
+  name: snapshot-sample
+  namespace: default
+spec:
+  chain: test-chain-zenoh-overlord
+  node: test-chain-zenoh-overlord-node0
+  blockHeight: 200
+  deployMethod: cloud-config
+  storageClass: csi-nas
+  pullPolicy: Always
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot

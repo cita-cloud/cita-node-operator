@@ -191,6 +191,34 @@ func (p *pyNode) Fallback(ctx context.Context, blockHeight int64, crypto, consen
 	return err
 }
 
+func (p *pyNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+	err := p.Stop(ctx)
+	if err != nil {
+		return err
+	}
+	err = p.CheckStopped(ctx)
+	if err != nil {
+		return err
+	}
+	snapshotSize, err := p.behavior.Snapshot(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name),
+		fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name), citacloudv1.BackupDestVolumePath, crypto, consensus)
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{"snapshot-size": strconv.FormatInt(snapshotSize, 10)}
+	err = p.AddAnnotations(ctx, annotations)
+	if err != nil {
+		return err
+	}
+
+	err = p.Start(ctx)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func (p *pyNode) Start(ctx context.Context) error {
 	pyNodeLog.Info(fmt.Sprintf("starting node %s/%s ...", p.namespace, p.name))
 	dep := &appsv1.Deployment{}

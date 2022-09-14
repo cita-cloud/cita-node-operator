@@ -143,6 +143,11 @@ func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, cons
 	return err
 }
 
+func (h *helmNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (h *helmNode) Start(ctx context.Context) error {
 	helmNodeLog.Info("start node for statefulset...")
 	sts := &appsv1.StatefulSet{}

@@ -157,6 +157,33 @@ func (c *cloudConfigNode) Fallback(ctx context.Context, blockHeight int64, crypt
 	return err
 }
 
+func (c *cloudConfigNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+	err := c.Stop(ctx)
+	if err != nil {
+		return err
+	}
+	err = c.CheckStopped(ctx)
+	if err != nil {
+		return err
+	}
+	snapshotSize, err := c.behavior.Snapshot(blockHeight, citacloudv1.BackupSourceVolumePath, citacloudv1.ConfigMountPath, citacloudv1.BackupDestVolumePath, crypto, consensus)
+	if err != nil {
+		return err
+	}
+
+	annotations := map[string]string{"snapshot-size": strconv.FormatInt(snapshotSize, 10)}
+	err = c.AddAnnotations(ctx, annotations)
+	if err != nil {
+		return err
+	}
+
+	err = c.Start(ctx)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
 func (c *cloudConfigNode) Start(ctx context.Context) error {
 	cloudConfigNodeLog.Info(fmt.Sprintf("starting node %s/%s ...", c.namespace, c.name))
 	sts := &appsv1.StatefulSet{}
