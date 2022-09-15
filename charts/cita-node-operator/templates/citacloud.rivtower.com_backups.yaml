@@ -50,6 +50,10 @@ spec:
               node:
                 description: Node
                 type: string
+              podAffinityFlag:
+                description: 'PodAffinityFlag weather or not the job''s affinity with
+                  chain node''s pod. Notice: helm chain must be false'
+                type: boolean
               pullPolicy:
                 description: PullPolicy
                 type: string

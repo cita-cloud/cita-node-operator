@@ -332,6 +332,11 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 		})
 	}
 
+	nodeKey, err := GetNodeLabelKeyByType(snapshot.Spec.DeployMethod)
+	if err != nil {
+		return nil, err
+	}
+
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      snapshot.Name,
@@ -346,6 +351,7 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					Affinity:           SetAffinity(snapshot.Spec.PodAffinityFlag, nodeKey, snapshot.Spec.Node),
 					ServiceAccountName: citacloudv1.CITANodeJobServiceAccount,
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{

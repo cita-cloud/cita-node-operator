@@ -2,10 +2,12 @@ apiVersion: citacloud.rivtower.com/v1
 kind: Backup
 metadata:
   name: backup-sample-cloud-config
-  namespace: cita
+  namespace: default
 spec:
-  chain: test-chain-zenoh-bft
-  node: test-chain-zenoh-bft-node0
+  chain: test-chain-zenoh-overlord
+  node: test-chain-zenoh-overlord-node0
   deployMethod: cloud-config
   storageClass: nas-client-provisioner
   pullPolicy: Always
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
+  podAffinityFlag: true

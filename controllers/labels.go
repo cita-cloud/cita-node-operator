@@ -16,6 +16,11 @@ limitations under the License.
 
 package controllers
 
+import (
+	"fmt"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
+)
+
 func LabelsForNode(chainName, nodeName string) map[string]string {
 	return map[string]string{
 		"app.kubernetes.io/chain-name": chainName,
@@ -40,4 +45,17 @@ func MergeLabels(allLabels ...map[string]string) map[string]string {
 	}
 
 	return lb
+}
+
+func GetNodeLabelKeyByType(deployMethod nodepkg.DeployMethod) (string, error) {
+	switch deployMethod {
+	case nodepkg.Helm:
+		return "app.kubernetes.io/chain-name", nil
+	case nodepkg.PythonOperator:
+		return "node_name", nil
+	case nodepkg.CloudConfig:
+		return "app.kubernetes.io/chain-node", nil
+	default:
+		return "", fmt.Errorf("mismatched deploy method")
+	}
 }

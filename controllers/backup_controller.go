@@ -228,18 +228,11 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 	var pvcSourceName string
 
 	if backup.Spec.DeployMethod == chainpkg.PythonOperator {
-		deployList := &appsv1.DeploymentList{}
-		deployOpts := []client.ListOption{
-			client.InNamespace(backup.Namespace),
-			client.MatchingLabels(map[string]string{"chain_name": backup.Spec.Chain, "node_name": backup.Spec.Node}),
-		}
-		if err := r.List(ctx, deployList, deployOpts...); err != nil {
+		deploy := &appsv1.Deployment{}
+		if err := r.Get(ctx, types.NamespacedName{Name: backup.Spec.Node, Namespace: backup.Namespace}, deploy); err != nil {
 			return nil, err
 		}
-		if len(deployList.Items) != 1 {
-			return nil, fmt.Errorf("node deployment != 1")
-		}
-		volumes := deployList.Items[0].Spec.Template.Spec.Volumes
+		volumes := deploy.Spec.Template.Spec.Volumes
 		for _, volume := range volumes {
 			if volume.Name == "datadir" {
 				pvcSourceName = volume.PersistentVolumeClaim.ClaimName
@@ -256,18 +249,11 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 		}
 		resourceRequirements = pvc.Spec.Resources
 	} else {
-		stsList := &appsv1.StatefulSetList{}
-		stsOpts := []client.ListOption{
-			client.InNamespace(backup.Namespace),
-			client.MatchingLabels(map[string]string{"app.kubernetes.io/chain-name": backup.Spec.Chain, "app.kubernetes.io/chain-node": backup.Spec.Node}),
-		}
-		if err := r.List(ctx, stsList, stsOpts...); err != nil {
+		sts := &appsv1.StatefulSet{}
+		if err := r.Get(ctx, types.NamespacedName{Name: backup.Spec.Node, Namespace: backup.Namespace}, sts); err != nil {
 			return nil, err
 		}
-		if len(stsList.Items) != 1 {
-			return nil, fmt.Errorf("node statefulset != 1")
-		}
-		pvcs := stsList.Items[0].Spec.VolumeClaimTemplates
+		pvcs := sts.Spec.VolumeClaimTemplates
 		for _, pvc := range pvcs {
 			if pvc.Name == "datadir" {
 				resourceRequirements = pvc.Spec.Resources
@@ -317,6 +303,11 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 		},
 	}
 
+	nodeKey, err := GetNodeLabelKeyByType(backup.Spec.DeployMethod)
+	if err != nil {
+		return nil, err
+	}
+
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      backup.Name,
@@ -331,6 +322,7 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					Affinity:           SetAffinity(backup.Spec.PodAffinityFlag, nodeKey, backup.Spec.Node),
 					ServiceAccountName: citacloudv1.CITANodeJobServiceAccount,
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{

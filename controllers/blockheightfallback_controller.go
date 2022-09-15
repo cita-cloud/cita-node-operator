@@ -174,6 +174,11 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 		return nil, err
 	}
 
+	nodeKey, err := GetNodeLabelKeyByType(bhf.Spec.DeployMethod)
+	if err != nil {
+		return nil, err
+	}
+
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      bhf.Name,
@@ -188,6 +193,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					Affinity:           SetAffinity(bhf.Spec.PodAffinityFlag, nodeKey, bhf.Spec.Node),
 					ServiceAccountName: citacloudv1.CITANodeJobServiceAccount,
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{

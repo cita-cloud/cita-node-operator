@@ -43,6 +43,8 @@ type SnapshotSpec struct {
 	PullPolicy v1.PullPolicy `json:"pullPolicy,omitempty"`
 	// ttlSecondsAfterFinished clean up finished Jobs (either Complete or Failed) automatically
 	TTLSecondsAfterFinished int64 `json:"ttlSecondsAfterFinished,omitempty"`
+	// PodAffinityFlag weather or not the job's affinity with chain node's pod. Notice: helm chain must be false
+	PodAffinityFlag bool `json:"podAffinityFlag,omitempty"`
 }
 
 // SnapshotStatus defines the observed state of Snapshot
