@@ -5,23 +5,20 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
-  name: blockheightfallbacks.citacloud.rivtower.com
+  name: switchovers.citacloud.rivtower.com
 spec:
   group: citacloud.rivtower.com
   names:
-    kind: BlockHeightFallback
-    listKind: BlockHeightFallbackList
-    plural: blockheightfallbacks
-    shortNames:
-    - bhf
-    singular: blockheightfallback
+    kind: Switchover
+    listKind: SwitchoverList
+    plural: switchovers
+    singular: switchover
   scope: Namespaced
   versions:
   - name: v1
     schema:
       openAPIV3Schema:
-        description: BlockHeightFallback is the Schema for the blockheightfallbacks
-          API
+        description: Switchover is the Schema for the switchovers API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -36,30 +33,23 @@ spec:
           metadata:
             type: object
           spec:
-            description: BlockHeightFallbackSpec defines the desired state of BlockHeightFallback
+            description: SwitchoverSpec defines the desired state of Switchover Role
+              conversion for two nodes in the same k8s cluster
             properties:
-              blockHeight:
-                description: BlockHeight
-                format: int64
-                type: integer
               chain:
                 description: Chain
                 type: string
-              deployMethod:
-                description: DeployMethod
+              destNode:
+                description: DestNode
                 type: string
               image:
                 description: Image
                 type: string
-              node:
-                description: Node
-                type: string
-              podAffinityFlag:
-                description: 'PodAffinityFlag weather or not the job''s affinity with
-                  chain node''s pod. Notice: helm chain must be false'
-                type: boolean
               pullPolicy:
                 description: PullPolicy
+                type: string
+              sourceNode:
+                description: SourceNode
                 type: string
               ttlSecondsAfterFinished:
                 description: ttlSecondsAfterFinished clean up finished Jobs (either
@@ -67,13 +57,12 @@ spec:
                 format: int64
                 type: integer
             required:
-            - blockHeight
             - chain
-            - deployMethod
-            - node
+            - destNode
+            - sourceNode
             type: object
           status:
-            description: BlockHeightFallbackStatus defines the observed state of BlockHeightFallback
+            description: SwitchoverStatus defines the observed state of Switchover
             properties:
               endTime:
                 description: EndTime
