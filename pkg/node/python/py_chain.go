@@ -47,6 +47,11 @@ type pyNode struct {
 	chain     string
 }
 
+func (p *pyNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *pyNode) GetName() string {
 	return p.name
 }

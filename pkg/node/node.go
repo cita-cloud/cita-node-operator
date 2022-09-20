@@ -49,4 +49,5 @@ type Node interface {
 	GetName() string
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error
 	Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error
+	SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error
 }

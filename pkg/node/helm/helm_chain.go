@@ -48,6 +48,11 @@ type helmNode struct {
 	replicas  *int32
 }
 
+func (h *helmNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (h *helmNode) GetName() string {
 	return h.name
 }

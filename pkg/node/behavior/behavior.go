@@ -31,6 +31,7 @@ type Interface interface {
 	Restore(sourcePath string, destPath string) error
 	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error
 	Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error)
+	SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error
 }
 
 type Behavior struct {
@@ -175,6 +176,24 @@ func (receiver Behavior) Snapshot(blockHeight int64, nodeRoot string, configPath
 	snapshotSize, err := receiver.calculateSize(backupPath)
 	receiver.logger.Info(fmt.Sprintf("exec snapshot: [height: %d, size: %d] successful", blockHeight, snapshotSize))
 	return snapshotSize, nil
+}
+
+func (receiver Behavior) SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error {
+	receiver.logger.Info(
+		fmt.Sprintf("exec snapshot recover: [height: %d, node-root: %s, config-path: %s, backup-path: %s, crypto: %s, consensus: %s]...",
+			blockHeight, nodeRoot, configPath, backupPath, crypto, consensus))
+	err := receiver.execer.Command("cloud-op", "state-recover", fmt.Sprintf("%d", blockHeight),
+		"--node-root", nodeRoot,
+		"--config-path", fmt.Sprintf("%s/config.toml", configPath),
+		"--backup-path", backupPath,
+		"--crypto", crypto,
+		"--consensus", consensus).Run()
+	if err != nil {
+		receiver.logger.Error(err, "exec snapshot recover failed")
+		return err
+	}
+	receiver.logger.Info(fmt.Sprintf("exec snapshot recover: [height: %d] successful", blockHeight))
+	return nil
 }
 
 func (receiver Behavior) Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error {
