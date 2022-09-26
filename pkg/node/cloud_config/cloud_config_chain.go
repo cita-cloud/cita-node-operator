@@ -197,6 +197,10 @@ func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64
 	if err != nil {
 		return err
 	}
+	err = c.behavior.Chown(citacloudv1.RestoreDestVolumePath, 1000, 1000)
+	if err != nil {
+		return err
+	}
 	err = c.Start(ctx)
 	if err != nil {
 		return err

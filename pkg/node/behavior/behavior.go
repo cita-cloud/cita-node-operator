@@ -32,6 +32,7 @@ type Interface interface {
 	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error
 	Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error)
 	SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error
+	Chown(path string, uid, gid int64) error
 }
 
 type Behavior struct {
@@ -193,6 +194,16 @@ func (receiver Behavior) SnapshotRecover(blockHeight int64, nodeRoot string, con
 		return err
 	}
 	receiver.logger.Info(fmt.Sprintf("exec snapshot recover: [height: %d] successful", blockHeight))
+	return nil
+}
+
+func (receiver Behavior) Chown(path string, uid, gid int64) error {
+	err := receiver.execer.Command("chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path).Run()
+	if err != nil {
+		receiver.logger.Error(err, "chown failed")
+		return err
+	}
+	receiver.logger.Info("chown successful")
 	return nil
 }
 
