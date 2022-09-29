@@ -166,6 +166,32 @@ rules:
 - apiGroups:
   - citacloud.rivtower.com
   resources:
+  - changeowners
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - changeowners/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - changeowners/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
   - citanodes
   verbs:
   - create

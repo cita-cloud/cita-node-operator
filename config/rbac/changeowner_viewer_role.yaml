@@ -1,0 +1,20 @@
+# permissions for end users to view changeowners.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: changeowner-viewer-role
+rules:
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - changeowners
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - changeowners/status
+  verbs:
+  - get

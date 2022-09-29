@@ -74,6 +74,26 @@ func (c *cloudConfigNode) UpdateAccountConfigmap(ctx context.Context, newConfigm
 	return nil
 }
 
+func (c *cloudConfigNode) ChangeOwner(ctx context.Context, action node.Action, uid, gid int64) error {
+	if action == node.StopAndStart {
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+		if err := c.CheckStopped(ctx); err != nil {
+			return err
+		}
+	}
+	if err := c.behavior.ChangeOwner(uid, gid, citacloudv1.ChangeOwnerVolumePath); err != nil {
+		return err
+	}
+	if action == node.StopAndStart {
+		if err := c.Start(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error {
 	if action == node.StopAndStart {
 		if err := c.Stop(ctx); err != nil {
@@ -197,7 +217,7 @@ func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64
 	if err != nil {
 		return err
 	}
-	err = c.behavior.Chown(citacloudv1.RestoreDestVolumePath, 1000, 1000)
+	err = c.behavior.ChangeOwner(1000, 1000, citacloudv1.RestoreDestVolumePath)
 	if err != nil {
 		return err
 	}

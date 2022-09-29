@@ -1,0 +1,13 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: ChangeOwner
+metadata:
+  name: changeowner-sample
+  namespace: default
+spec:
+  chain: upgrade
+  node: upgrade-node0
+  deployMethod: cloud-config
+  uid: 1000
+  gid: 1000
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:chown
+  pullPolicy: Always

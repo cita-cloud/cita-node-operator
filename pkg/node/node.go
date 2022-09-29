@@ -50,4 +50,5 @@ type Node interface {
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error
 	Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error
 	SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error
+	ChangeOwner(ctx context.Context, action Action, uid, gid int64) error
 }

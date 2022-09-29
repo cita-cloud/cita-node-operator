@@ -61,6 +61,26 @@ func (p *pyNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string
 	panic("implement me")
 }
 
+func (p *pyNode) ChangeOwner(ctx context.Context, action node.Action, uid, gid int64) error {
+	if action == node.StopAndStart {
+		if err := p.Stop(ctx); err != nil {
+			return err
+		}
+		if err := p.CheckStopped(ctx); err != nil {
+			return err
+		}
+	}
+	if err := p.behavior.ChangeOwner(uid, gid, fmt.Sprintf("%s/%s", citacloudv1.ChangeOwnerVolumePath, p.name)); err != nil {
+		return err
+	}
+	if action == node.StopAndStart {
+		if err := p.Start(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 	if action == node.StopAndStart {
 		if err := p.Stop(ctx); err != nil {

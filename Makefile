@@ -1,8 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-operator:v0.0.1
+DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-operator:v0.0.2
 IMG ?= citacloud/cita-node-operator
-JOB_DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
+JOB_DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
 JOB_IMG ?= citacloud/cita-node-job
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23

@@ -1,0 +1,99 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.8.0
+  creationTimestamp: null
+  name: changeowners.citacloud.rivtower.com
+spec:
+  group: citacloud.rivtower.com
+  names:
+    kind: ChangeOwner
+    listKind: ChangeOwnerList
+    plural: changeowners
+    singular: changeowner
+  scope: Namespaced
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: ChangeOwner is the Schema for the changeowners API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ChangeOwnerSpec defines the desired state of ChangeOwner
+            properties:
+              action:
+                description: Action
+                type: string
+              chain:
+                description: Chain
+                type: string
+              deployMethod:
+                description: DeployMethod
+                type: string
+              gid:
+                description: Gid
+                format: int64
+                type: integer
+              image:
+                description: Image
+                type: string
+              node:
+                description: Node
+                type: string
+              pullPolicy:
+                description: PullPolicy
+                type: string
+              ttlSecondsAfterFinished:
+                description: ttlSecondsAfterFinished clean up finished Jobs (either
+                  Complete or Failed) automatically
+                format: int64
+                type: integer
+              uid:
+                description: Uid
+                format: int64
+                type: integer
+            required:
+            - chain
+            - deployMethod
+            - node
+            type: object
+          status:
+            description: ChangeOwnerStatus defines the observed state of ChangeOwner
+            properties:
+              endTime:
+                description: EndTime
+                format: date-time
+                type: string
+              startTime:
+                description: StartTime
+                format: date-time
+                type: string
+              status:
+                description: Status
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

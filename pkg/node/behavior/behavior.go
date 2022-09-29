@@ -32,7 +32,7 @@ type Interface interface {
 	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error
 	Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error)
 	SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error
-	Chown(path string, uid, gid int64) error
+	ChangeOwner(uid, gid int64, path string) error
 }
 
 type Behavior struct {
@@ -197,16 +197,6 @@ func (receiver Behavior) SnapshotRecover(blockHeight int64, nodeRoot string, con
 	return nil
 }
 
-func (receiver Behavior) Chown(path string, uid, gid int64) error {
-	err := receiver.execer.Command("chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path).Run()
-	if err != nil {
-		receiver.logger.Error(err, "chown failed")
-		return err
-	}
-	receiver.logger.Info("chown successful")
-	return nil
-}
-
 func (receiver Behavior) Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error {
 	receiver.logger.Info(fmt.Sprintf("exec block height fallback: [height: %d]...", blockHeight))
 	err := receiver.execer.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
@@ -219,5 +209,16 @@ func (receiver Behavior) Fallback(blockHeight int64, nodeRoot string, configPath
 		return err
 	}
 	receiver.logger.Info(fmt.Sprintf("exec block height fallback: [height: %d] successful", blockHeight))
+	return nil
+}
+
+func (receiver Behavior) ChangeOwner(uid, gid int64, path string) error {
+	receiver.logger.Info(fmt.Sprintf("exec chown: [path: %s, uid: %d, gid: %d]...", path, uid, gid))
+	err := receiver.execer.Command("chown", "-R", fmt.Sprintf("%d:%d", uid, gid), path).Run()
+	if err != nil {
+		receiver.logger.Error(err, "exec chown failed")
+		return err
+	}
+	receiver.logger.Info(fmt.Sprintf("exec chown: [path: %s, uid: %d, gid: %d] successful", path, uid, gid))
 	return nil
 }

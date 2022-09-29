@@ -115,12 +115,20 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Switchover")
+		os.Exit(1)
 	}
 	if err = (&controllers.SnapshotReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Snapshot")
+		os.Exit(1)
+	}
+	if err = (&controllers.ChangeOwnerReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ChangeOwner")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
