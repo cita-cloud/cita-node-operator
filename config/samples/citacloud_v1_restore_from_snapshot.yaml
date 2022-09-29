@@ -1,14 +1,13 @@
 apiVersion: citacloud.rivtower.com/v1
-kind: Snapshot
+kind: Restore
 metadata:
-  name: snapshot-sample
+  name: restore-sample-cloud-config
   namespace: default
 spec:
   chain: test-chain-zenoh-bft
   node: test-chain-zenoh-bft-node0
-  blockHeight: 50
   deployMethod: cloud-config
-  storageClass: csi-nas
+  snapshot: snapshot-sample
   pullPolicy: Always
   image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
   podAffinityFlag: true

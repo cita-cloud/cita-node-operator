@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -31,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 )
@@ -38,7 +40,8 @@ import (
 // RestoreReconciler reconciles a Restore object
 type RestoreReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	snapshot *citacloudv1.Snapshot
 }
 
 //+kubebuilder:rbac:groups=citacloud.rivtower.com,resources=restores,verbs=get;list;watch;create;update;patch;delete
@@ -67,11 +70,22 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// check
-	backup := &citacloudv1.Backup{}
-	err := r.Get(ctx, types.NamespacedName{Name: restore.Spec.Backup, Namespace: restore.Namespace}, backup)
-	if err != nil {
-		logger.Error(err, fmt.Sprintf("get backup %s/%s failed", restore.Namespace, restore.Spec.Backup))
-		return ctrl.Result{}, err
+	if restore.Spec.Backup != "" {
+		backup := &citacloudv1.Backup{}
+		err := r.Get(ctx, types.NamespacedName{Name: restore.Spec.Backup, Namespace: restore.Namespace}, backup)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("get backup %s/%s failed", restore.Namespace, restore.Spec.Backup))
+			return ctrl.Result{}, err
+		}
+	}
+	if restore.Spec.Snapshot != "" {
+		snapshot := &citacloudv1.Snapshot{}
+		err := r.Get(ctx, types.NamespacedName{Name: restore.Spec.Snapshot, Namespace: restore.Namespace}, snapshot)
+		if err != nil {
+			logger.Error(err, fmt.Sprintf("get snapshot %s/%s failed", restore.Namespace, restore.Spec.Snapshot))
+			return ctrl.Result{}, err
+		}
+		r.snapshot = snapshot
 	}
 
 	if r.setDefaultStatus(restore) {
@@ -91,7 +105,7 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		citacloudv1.CITANodeJobServiceAccount,
 		citacloudv1.CITANodeJobClusterRole,
 		citacloudv1.CITANodeJobClusterRoleBinding)
-	err = jobRbac.Ensure(ctx)
+	err := jobRbac.Ensure(ctx)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -111,10 +125,20 @@ func (r *RestoreReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if err != nil && errors.IsNotFound(err) {
 		// Define a new deployment
-		job, err := r.jobForRestore(ctx, restore)
-		if err != nil {
-			logger.Error(err, "generate job resource failed")
-			return ctrl.Result{}, err
+		var job *v1.Job
+		if restore.Spec.Backup != "" {
+			job, err = r.jobForRestore(ctx, restore)
+			if err != nil {
+				logger.Error(err, "generate job resource failed")
+				return ctrl.Result{}, err
+			}
+		}
+		if restore.Spec.Snapshot != "" {
+			job, err = r.jobForSnapshotRecover(ctx, restore)
+			if err != nil {
+				logger.Error(err, "generate job resource failed")
+				return ctrl.Result{}, err
+			}
 		}
 		logger.Info("creating a new Job")
 		err = r.Create(ctx, job)
@@ -260,7 +284,7 @@ func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citaclou
 							Args: []string{
 								"restore",
 								"--namespace", restore.Namespace,
-								"--node", restore.Spec.Chain,
+								"--chain", restore.Spec.Chain,
 								"--node", restore.Spec.Node,
 								"--deploy-method", string(restore.Spec.DeployMethod),
 								"--action", string(restore.Spec.Action),
@@ -273,6 +297,127 @@ func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citaclou
 								{
 									Name:      citacloudv1.RestoreDestVolumeName,
 									MountPath: citacloudv1.RestoreDestVolumePath,
+								},
+							},
+						},
+					},
+					Volumes: volumes,
+				},
+			},
+		},
+	}
+	// bind
+	if err := ctrl.SetControllerReference(restore, job, r.Scheme); err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
+func (r *RestoreReconciler) jobForSnapshotRecover(ctx context.Context, restore *citacloudv1.Restore) (*v1.Job, error) {
+	labels := LabelsForNode(restore.Spec.Chain, restore.Spec.Node)
+
+	var pvcDestName string
+	var crypto, consensus string
+
+	if restore.Spec.DeployMethod == nodepkg.PythonOperator {
+		// todo
+	} else if restore.Spec.DeployMethod == nodepkg.CloudConfig {
+		sts := &appsv1.StatefulSet{}
+		err := r.Get(ctx, types.NamespacedName{
+			Namespace: restore.Namespace,
+			Name:      restore.Spec.Node,
+		}, sts)
+		if err != nil {
+			return nil, err
+		}
+		crypto, consensus = filterCryptoAndConsensus(sts.Spec.Template.Spec.Containers)
+		pvcDestName = fmt.Sprintf("datadir-%s-0", restore.Spec.Node)
+	}
+
+	volumes := []corev1.Volume{
+		{
+			Name: citacloudv1.RestoreSourceVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: restore.Spec.Snapshot,
+					ReadOnly:  false,
+				},
+			},
+		},
+		{
+			Name: citacloudv1.RestoreDestVolumeName,
+			VolumeSource: corev1.VolumeSource{
+				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+					ClaimName: pvcDestName,
+					ReadOnly:  false,
+				},
+			},
+		},
+		{
+			// configmap
+			Name: citacloudv1.ConfigName,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: fmt.Sprintf("%s-config", restore.Spec.Node),
+					},
+				},
+			},
+		},
+	}
+
+	nodeKey, err := GetNodeLabelKeyByType(restore.Spec.DeployMethod)
+	if err != nil {
+		return nil, err
+	}
+
+	job := &v1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      restore.Name,
+			Namespace: restore.Namespace,
+			Labels:    labels,
+		},
+		Spec: v1.JobSpec{
+			BackoffLimit: pointer.Int32(0),
+
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: labels,
+				},
+				Spec: corev1.PodSpec{
+					Affinity:           SetAffinity(restore.Spec.PodAffinityFlag, nodeKey, restore.Spec.Node),
+					ServiceAccountName: citacloudv1.CITANodeJobServiceAccount,
+					RestartPolicy:      corev1.RestartPolicyNever,
+					Containers: []corev1.Container{
+						{
+							Name:            "cita-node-cli",
+							Image:           restore.Spec.Image,
+							ImagePullPolicy: restore.Spec.PullPolicy,
+							Command: []string{
+								"/cita-node-cli",
+							},
+							Args: []string{
+								"snapshot-recover",
+								"--namespace", restore.Namespace,
+								"--chain", restore.Spec.Chain,
+								"--node", restore.Spec.Node,
+								"--deploy-method", string(restore.Spec.DeployMethod),
+								"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+								"--crypto", crypto,
+								"--consensus", consensus,
+							},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      citacloudv1.RestoreSourceVolumeName,
+									MountPath: citacloudv1.RestoreSourceVolumePath,
+								},
+								{
+									Name:      citacloudv1.RestoreDestVolumeName,
+									MountPath: citacloudv1.RestoreDestVolumePath,
+								},
+								{
+									Name:      citacloudv1.ConfigName,
+									MountPath: citacloudv1.ConfigMountPath,
 								},
 							},
 						},
