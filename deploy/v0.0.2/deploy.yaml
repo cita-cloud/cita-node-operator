@@ -350,7 +350,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: cita-node-operator-sa
-    namespace: cita
+    namespace: <namespace>
 roleRef:
   kind: ClusterRole
   name: cita-node-operator-role
@@ -387,7 +387,7 @@ spec:
             - /cita-node-operator
           args:
             - --leader-elect
-          image: citacloud/cita-node-operator:v0.0.1
+          image: citacloud/cita-node-operator:v0.0.2
           imagePullPolicy: IfNotPresent
           name: operator
           securityContext:

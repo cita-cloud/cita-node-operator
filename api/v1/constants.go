@@ -34,4 +34,4 @@ const (
 	CITANodeJobClusterRoleBinding = "cita-node-job"
 )
 
-const DefaultImage = "citacloud/cita-node-job:latest"
+const DefaultImage = "citacloud/cita-node-job:v0.0.2"
