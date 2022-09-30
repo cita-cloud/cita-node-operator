@@ -249,6 +249,12 @@ func (r *ChangeOwnerReconciler) jobForChangeOwner(ctx context.Context, owner *ci
 			},
 		},
 	}
+
+	nodeKey, err := GetNodeLabelKeyByType(owner.Spec.DeployMethod)
+	if err != nil {
+		return nil, err
+	}
+
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      owner.Name,
@@ -263,6 +269,7 @@ func (r *ChangeOwnerReconciler) jobForChangeOwner(ctx context.Context, owner *ci
 					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
+					Affinity:           SetAffinity(owner.Spec.PodAffinityFlag, nodeKey, owner.Spec.Node),
 					ServiceAccountName: citacloudv1.CITANodeJobServiceAccount,
 					RestartPolicy:      corev1.RestartPolicyNever,
 					Containers: []corev1.Container{
