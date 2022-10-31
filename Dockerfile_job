@@ -22,7 +22,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o cita-node-cli pkg/main/
 FROM debian:bullseye-slim
 WORKDIR /
 COPY --from=builder /workspace/cita-node-cli .
-COPY --from=citacloud/cloud-op:v0.2.3 /usr/bin/cloud-op /usr/bin/
+COPY --from=registry.devops.rivtower.com/cita-cloud/cloud-op:latest /usr/bin/cloud-op /usr/bin/
 #USER 65532:65532
 
 ENTRYPOINT ["/cita-node-cli"]
