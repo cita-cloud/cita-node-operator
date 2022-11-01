@@ -85,7 +85,7 @@ LOOP:
 }
 
 func (receiver Behavior) backup(sourcePath string, destPath string) error {
-	err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -a %s/* %s", sourcePath, destPath)).Run()
+	err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -a %s/data %s/chain_data %s", sourcePath, sourcePath, destPath)).Run()
 	if err != nil {
 		receiver.logger.Error(err, "copy file failed")
 		return err
@@ -146,12 +146,12 @@ LOOP:
 }
 
 func (receiver Behavior) restore(sourcePath string, destPath string) error {
-	err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/*", destPath)).Run()
+	err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/chain_data %s/data", destPath, destPath)).Run()
 	if err != nil {
 		receiver.logger.Error(err, "clean dest dir failed")
 		return err
 	}
-	err = receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/* %s", sourcePath, destPath)).Run()
+	err = receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/chain_data %s/data %s", sourcePath, sourcePath, destPath)).Run()
 	if err != nil {
 		receiver.logger.Error(err, "restore file failed")
 		return err
