@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
 	"os"
@@ -52,25 +53,32 @@ func (c *cloudConfigNode) GetName() string {
 }
 
 func (c *cloudConfigNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
-	// find node
-	sts := &appsv1.StatefulSet{}
-	err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
-	if err != nil {
-		cloudConfigNodeLog.Error(err, fmt.Sprintf("get node %s/%s failed", c.namespace, c.name))
-		return err
-	}
-	volumes := sts.Spec.Template.Spec.Volumes
-	for _, vol := range volumes {
-		if vol.Name == "node-account" {
-			vol.VolumeSource.ConfigMap.LocalObjectReference.Name = newConfigmap
+	cloudConfigNodeLog.Info(fmt.Sprintf("update account configmap for node %s/%s, new configmap: %s ...", c.namespace, c.name, newConfigmap))
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		// find node
+		sts := &appsv1.StatefulSet{}
+		err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
+		if err != nil {
+			return err
 		}
-	}
-	sts.Spec.Template.Spec.Volumes = volumes
-	err = c.Update(ctx, sts)
+		volumes := sts.Spec.Template.Spec.Volumes
+		for _, vol := range volumes {
+			if vol.Name == "node-account" {
+				vol.VolumeSource.ConfigMap.LocalObjectReference.Name = newConfigmap
+			}
+		}
+		sts.Spec.Template.Spec.Volumes = volumes
+		err = c.Update(ctx, sts)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		cloudConfigNodeLog.Error(err, fmt.Sprintf("update node %s/%s account configmap failed", c.namespace, c.name))
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("update account configmap for node %s/%s failed", c.namespace, c.name))
 		return err
 	}
+	cloudConfigNodeLog.Info(fmt.Sprintf("update account configmap for node %s/%s successful", c.namespace, c.name))
 	return nil
 }
 
@@ -117,18 +125,24 @@ func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error
 func (c *cloudConfigNode) Stop(ctx context.Context) error {
 	cloudConfigNodeLog.Info(fmt.Sprintf("stop node %s/%s for statefulset...", c.namespace, c.name))
 	// find chain
-	sts := &appsv1.StatefulSet{}
-	err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		sts := &appsv1.StatefulSet{}
+		err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
+		if err != nil {
+			return err
+		}
+		sts.Spec.Replicas = pointer.Int32(0)
+		err = c.Update(ctx, sts)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		cloudConfigNodeLog.Error(err, fmt.Sprintf("get node %s/%s failed", c.namespace, c.name))
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("stop node %s/%s failed", c.namespace, c.name))
 		return err
 	}
-	sts.Spec.Replicas = pointer.Int32(0)
-	err = c.Update(ctx, sts)
-	if err != nil {
-		return err
-	}
-	cloudConfigNodeLog.Info(fmt.Sprintf("scale down statefulset to 0 for node %s/%s successful", c.namespace, c.name))
+	cloudConfigNodeLog.Info(fmt.Sprintf("stop node %s/%s successful", c.namespace, c.name))
 	return nil
 }
 
@@ -230,14 +244,21 @@ func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64
 
 func (c *cloudConfigNode) Start(ctx context.Context) error {
 	cloudConfigNodeLog.Info(fmt.Sprintf("starting node %s/%s ...", c.namespace, c.name))
-	sts := &appsv1.StatefulSet{}
-	err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		sts := &appsv1.StatefulSet{}
+		err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
+		if err != nil {
+			return err
+		}
+		sts.Spec.Replicas = pointer.Int32(1)
+		err = c.Update(ctx, sts)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		return err
-	}
-	sts.Spec.Replicas = pointer.Int32(1)
-	err = c.Update(ctx, sts)
-	if err != nil {
+		cloudConfigNodeLog.Error(err, fmt.Sprintf("start node %s/%s failed", c.namespace, c.name))
 		return err
 	}
 	cloudConfigNodeLog.Info(fmt.Sprintf("start node %s/%s successful", c.namespace, c.name))
