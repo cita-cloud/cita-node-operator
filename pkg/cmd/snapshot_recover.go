@@ -19,6 +19,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
@@ -87,7 +88,10 @@ func snapshotRecoverFunc(cmd *cobra.Command, args []string) {
 		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = node.SnapshotRecover(context.Background(), snapshotRecover.blockHeight, snapshotRecover.crypto, snapshotRecover.consensus)
+	ctx := context.Background()
+	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
+		return node.SnapshotRecover(ctx, snapshotRecover.blockHeight, snapshotRecover.crypto, snapshotRecover.consensus)
+	})
 	if err != nil {
 		setupLog.Error(err, "exec snapshot recover failed")
 		os.Exit(1)

@@ -143,6 +143,12 @@ func (r *ChangeOwnerReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if job.Status.Active == 1 {
 		cur.Status.Status = citacloudv1.JobActive
 	} else if job.Status.Failed == 1 {
+		// get error log message from pod annotations
+		errLog, err := GetErrorLogFromPod(ctx, r.Client, changeOwner.Namespace, changeOwner.Name, string(job.UID))
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		cur.Status.Message = errLog
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
@@ -289,6 +295,24 @@ func (r *ChangeOwnerReconciler) jobForChangeOwner(ctx context.Context, owner *ci
 								"--action", string(owner.Spec.Action),
 								"--uid", strconv.FormatInt(owner.Spec.Uid, 10),
 								"--gid", strconv.FormatInt(owner.Spec.Gid, 10),
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: POD_NAME_ENV,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: POD_NAMESPACE_ENV,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
 							},
 							VolumeMounts: []corev1.VolumeMount{
 								{

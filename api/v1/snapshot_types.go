@@ -59,6 +59,8 @@ type SnapshotStatus struct {
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 	// EndTime
 	EndTime *metav1.Time `json:"endTime,omitempty"`
+	// Message
+	Message string `json:"message,omitempty"`
 }
 
 //+kubebuilder:object:root=true

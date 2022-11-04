@@ -134,6 +134,12 @@ func (r *SnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if job.Status.Active == 1 {
 		cur.Status.Status = citacloudv1.JobActive
 	} else if job.Status.Failed == 1 {
+		// get error log message from pod annotations
+		errLog, err := GetErrorLogFromPod(ctx, r.Client, snapshot.Namespace, snapshot.Name, string(job.UID))
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		cur.Status.Message = errLog
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
@@ -375,7 +381,7 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
 								{
-									Name: "MY_POD_NAME",
+									Name: POD_NAME_ENV,
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.name",
@@ -383,7 +389,7 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 									},
 								},
 								{
-									Name: "MY_POD_NAMESPACE",
+									Name: POD_NAMESPACE_ENV,
 									ValueFrom: &corev1.EnvVarSource{
 										FieldRef: &corev1.ObjectFieldSelector{
 											FieldPath: "metadata.namespace",

@@ -45,4 +45,7 @@ const (
 	NetworkPort    = 40000
 	ControllerPort = 50004
 	ExecutorPort   = 50002
+
+	POD_NAME_ENV      = "MY_POD_NAME"
+	POD_NAMESPACE_ENV = "MY_POD_NAMESPACE"
 )
