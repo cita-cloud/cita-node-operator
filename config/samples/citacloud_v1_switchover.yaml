@@ -2,11 +2,11 @@ apiVersion: citacloud.rivtower.com/v1
 kind: Switchover
 metadata:
   name: switchover-sample
-  namespace: default
+  namespace: cita
 spec:
   chain: test-chain-zenoh-overlord
   sourceNode: test-chain-zenoh-overlord-node0
   destNode: test-chain-zenoh-overlord-node1
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:switchover
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:log
   pullPolicy: Always
   ttlSecondsAfterFinished: 300

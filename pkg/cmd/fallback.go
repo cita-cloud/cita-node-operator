@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	"k8s.io/utils/exec"
 
@@ -82,12 +83,15 @@ func fallBackFunc(cmd *cobra.Command, args []string) {
 	case string(nodepkg.CloudConfig):
 		dm = nodepkg.CloudConfig
 	}
-	chain, err := nodepkg.CreateNode(dm, fallback.namespace, fallback.node, k8sClient, fallback.chain, exec.New())
+	node, err := nodepkg.CreateNode(dm, fallback.namespace, fallback.node, k8sClient, fallback.chain, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = chain.Fallback(context.Background(), fallback.blockHeight, fallback.crypto, fallback.consensus)
+	ctx := context.Background()
+	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
+		return node.Fallback(ctx, fallback.blockHeight, fallback.crypto, fallback.consensus)
+	})
 	if err != nil {
 		setupLog.Error(err, "exec block height fallback failed")
 		os.Exit(1)

@@ -53,6 +53,8 @@ type BlockHeightFallbackStatus struct {
 	EndTime *metav1.Time `json:"endTime,omitempty"`
 	// Status
 	Status JobConditionType `json:"status,omitempty"`
+	// Message
+	Message string `json:"message,omitempty"`
 }
 
 //+kubebuilder:object:root=true

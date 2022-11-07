@@ -137,6 +137,12 @@ func (r *BlockHeightFallbackReconciler) Reconcile(ctx context.Context, req ctrl.
 	if job.Status.Active == 1 {
 		cur.Status.Status = citacloudv1.JobActive
 	} else if job.Status.Failed == 1 {
+		// get error log message from pod annotations
+		errLog, err := GetErrorLogFromPod(ctx, r.Client, bhf.Namespace, bhf.Name, string(job.UID))
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		cur.Status.Message = errLog
 		cur.Status.Status = citacloudv1.JobFailed
 		endTime := job.Status.Conditions[0].LastTransitionTime
 		cur.Status.EndTime = &endTime
@@ -213,6 +219,24 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 								"--node", bhf.Spec.Node,
 								"--crypto", crypto,
 								"--consensus", consensus,
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name: POD_NAME_ENV,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: POD_NAMESPACE_ENV,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
 							},
 							VolumeMounts: volumeMounts,
 						},

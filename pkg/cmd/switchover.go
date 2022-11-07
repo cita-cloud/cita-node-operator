@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	switchoverpkg "github.com/cita-cloud/cita-node-operator/pkg/switchover"
 	"github.com/spf13/cobra"
@@ -73,8 +74,11 @@ func switchoverFunc(cmd *cobra.Command, args []string) {
 		setupLog.Error(err, "unable to init dest node")
 		os.Exit(1)
 	}
+	ctx := context.Background()
 	swMgr := switchoverpkg.NewSwitchoverMgr()
-	err = swMgr.Switch(context.Background(), sourceNode, destNode)
+	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
+		return swMgr.Switch(ctx, sourceNode, destNode)
+	})
 	if err != nil {
 		setupLog.Error(err, "exec switchover failed")
 		os.Exit(1)

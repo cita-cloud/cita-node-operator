@@ -82,6 +82,9 @@ spec:
                 description: EndTime
                 format: date-time
                 type: string
+              message:
+                description: Message
+                type: string
               startTime:
                 description: StartTime
                 format: date-time

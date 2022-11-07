@@ -19,6 +19,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
@@ -94,7 +95,10 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 		setupLog.Error(err, "unable to init node")
 		os.Exit(1)
 	}
-	err = node.Restore(context.Background(), action)
+	ctx := context.Background()
+	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
+		return node.Restore(ctx, action)
+	})
 	if err != nil {
 		setupLog.Error(err, "exec restore failed")
 		os.Exit(1)
