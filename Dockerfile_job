@@ -1,3 +1,5 @@
+ARG CLOUD_OP_REGISTRY
+ARG CLOUD_OP_TAG
 # Build the manager binary
 FROM golang:1.17 as builder
 
@@ -17,12 +19,14 @@ COPY pkg/ pkg/
 # Build
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o cita-node-cli pkg/main/main.go
 
+FROM ${CLOUD_OP_REGISTRY}/cita-cloud/cloud-op:${CLOUD_OP_TAG} as cloudop
+
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM debian:bullseye-slim
 WORKDIR /
 COPY --from=builder /workspace/cita-node-cli .
-COPY --from=registry.devops.rivtower.com/cita-cloud/cloud-op:latest /usr/bin/cloud-op /usr/bin/
+COPY --from=cloudop /usr/bin/cloud-op /usr/bin/
 #USER 65532:65532
 
 ENTRYPOINT ["/cita-node-cli"]
