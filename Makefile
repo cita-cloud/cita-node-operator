@@ -1,13 +1,14 @@
 
 # Image URL to use all building/pushing image targets
-DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-operator:latest
-IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-operator
-JOB_DEV_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
-JOB_IMG ?= registry.devops.rivtower.com/cita-cloud/cita-node-job
+DEV_IMG ?= $(IMG_REGISTRY)/cita-cloud/cita-node-operator:latest
+IMG ?= $(IMG_REGISTRY)/cita-cloud/cita-node-operator
+JOB_DEV_IMG ?= $(IMG_REGISTRY)/cita-cloud/cita-node-job:latest
+JOB_IMG ?= $(IMG_REGISTRY)/cita-cloud/cita-node-job
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.23
 
 VERSION=$(shell git describe --tags --match 'v*' --always --dirty)
+CLOUD_OP_LATEST_TAG=$(shell curl -sS "https://api.github.com/repos/cita-cloud/cloud-op/tags" | jq -r '.[0].name')
 GIT_COMMIT?=$(shell git rev-parse --short HEAD)
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
@@ -85,7 +86,9 @@ dev-push: ## Push dev image with the manager.
 
 .PHONY: job-build
 job-build: ## Build job image with the manager.
-	docker build --platform linux/amd64 -t ${JOB_DEV_IMG} -f ./Dockerfile_job . --build-arg version=$(GIT_COMMIT)
+	docker build --platform linux/amd64 -t ${JOB_DEV_IMG} -f ./Dockerfile_job . --build-arg version=$(GIT_COMMIT) \
+			--build-arg CLOUD_OP_REGISTRY=$(IMG_REGISTRY) \
+			--build-arg CLOUD_OP_TAG=latest
 
 .PHONY: job-push
 job-push: ## Push dev image with the manager.
@@ -95,12 +98,16 @@ job-push: ## Push dev image with the manager.
 job-image-latest:
 	# Build image with latest stable
 	docker buildx build -t $(JOB_IMG):latest --build-arg version=$(GIT_COMMIT) \
+			--build-arg CLOUD_OP_REGISTRY=$(IMG_REGISTRY) \
+			--build-arg CLOUD_OP_TAG=latest \
     		--platform linux/amd64,linux/arm64 -f ./Dockerfile_job . --push
 
 .PHONY: job-image-version
 job-image-version:
 	[ -z `git status --porcelain` ] || (git --no-pager diff && exit 255)
 	docker buildx build -t $(JOB_IMG):$(VERSION) --build-arg version=$(GIT_COMMIT) \
+		--build-arg CLOUD_OP_REGISTRY=$(IMG_REGISTRY) \
+        --build-arg CLOUD_OP_TAG=$(CLOUD_OP_LATEST_TAG) \
 		--platform linux/amd64,linux/arm64 -f ./Dockerfile_job . --push
 
 .PHONY: image-latest
