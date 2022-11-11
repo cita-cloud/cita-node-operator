@@ -2,8 +2,8 @@ apiVersion: v2
 name: cita-node-operator
 description: A Helm chart for Cita-Cloud Node Operator
 type: application
-version: 0.0.2
-appVersion: 0.0.2
+version: 0.0.3
+appVersion: 0.0.3
 kubeVersion: ">=1.18.0-0"
 home: https://github.com/cita-cloud/cita-node-operator
 
