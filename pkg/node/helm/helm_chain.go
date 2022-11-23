@@ -57,6 +57,11 @@ func (h *helmNode) GetName() string {
 	return h.name
 }
 
+func (h *helmNode) GetAccountConfigmap(ctx context.Context) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (h *helmNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
 	//TODO implement me
 	panic("implement me")

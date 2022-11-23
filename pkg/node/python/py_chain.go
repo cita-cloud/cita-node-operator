@@ -56,6 +56,11 @@ func (p *pyNode) GetName() string {
 	return p.name
 }
 
+func (p *pyNode) GetAccountConfigmap(ctx context.Context) (string, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (p *pyNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
 	//TODO implement me
 	panic("implement me")

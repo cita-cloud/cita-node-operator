@@ -52,6 +52,22 @@ func (c *cloudConfigNode) GetName() string {
 	return c.name
 }
 
+func (c *cloudConfigNode) GetAccountConfigmap(ctx context.Context) (string, error) {
+	// find node
+	sts := &appsv1.StatefulSet{}
+	err := c.Get(ctx, types.NamespacedName{Name: c.name, Namespace: c.namespace}, sts)
+	if err != nil {
+		return "", err
+	}
+	volumes := sts.Spec.Template.Spec.Volumes
+	for _, vol := range volumes {
+		if vol.Name == "node-account" {
+			return vol.VolumeSource.ConfigMap.LocalObjectReference.Name, nil
+		}
+	}
+	return "", nil
+}
+
 func (c *cloudConfigNode) UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error {
 	cloudConfigNodeLog.Info(fmt.Sprintf("update account configmap for node %s/%s, new configmap: %s ...", c.namespace, c.name, newConfigmap))
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
