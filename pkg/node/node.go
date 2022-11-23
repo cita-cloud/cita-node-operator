@@ -47,6 +47,7 @@ type Node interface {
 	Backup(ctx context.Context, action Action) error
 	Restore(ctx context.Context, action Action) error
 	GetName() string
+	GetAccountConfigmap(ctx context.Context) (string, error)
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error
 	Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error
 	SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error
