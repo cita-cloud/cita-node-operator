@@ -7,7 +7,8 @@ spec:
   chain: test-chain-zenoh-overlord
   node: test-chain-zenoh-overlord-node0
   deployMethod: cloud-config
+  pvcSize: 5Gi
   storageClass: nas-client-provisioner
   pullPolicy: Always
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   podAffinityFlag: true

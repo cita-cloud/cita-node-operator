@@ -37,6 +37,8 @@ type SnapshotSpec struct {
 	DeployMethod nodepkg.DeployMethod `json:"deployMethod"`
 	// StorageClass
 	StorageClass string `json:"storageClass,omitempty"`
+	// PvcSize
+	PvcSize string `json:"pvcSize,omitempty"`
 	// Image
 	Image string `json:"image,omitempty"`
 	// PullPolicy
