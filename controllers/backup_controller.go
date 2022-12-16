@@ -25,6 +25,7 @@ import (
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -248,22 +249,36 @@ func (r *BackupReconciler) jobForBackup(ctx context.Context, backup *citacloudv1
 		if pvcSourceName == "" {
 			return nil, fmt.Errorf("cann't get deployment's pvc")
 		}
-		pvc := &corev1.PersistentVolumeClaim{}
-		err := r.Get(ctx, types.NamespacedName{Name: pvcSourceName, Namespace: backup.Namespace}, pvc)
-		if err != nil {
-			return nil, err
+		if backup.Spec.PvcSize != "" {
+			resourceRequirements = corev1.ResourceRequirements{
+				Limits:   nil,
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(backup.Spec.PvcSize)},
+			}
+		} else {
+			pvc := &corev1.PersistentVolumeClaim{}
+			err := r.Get(ctx, types.NamespacedName{Name: pvcSourceName, Namespace: backup.Namespace}, pvc)
+			if err != nil {
+				return nil, err
+			}
+			resourceRequirements = pvc.Spec.Resources
 		}
-		resourceRequirements = pvc.Spec.Resources
 	} else {
-		sts := &appsv1.StatefulSet{}
-		if err := r.Get(ctx, types.NamespacedName{Name: backup.Spec.Node, Namespace: backup.Namespace}, sts); err != nil {
-			return nil, err
-		}
-		pvcs := sts.Spec.VolumeClaimTemplates
-		for _, pvc := range pvcs {
-			if pvc.Name == "datadir" {
-				resourceRequirements = pvc.Spec.Resources
-				break
+		if backup.Spec.PvcSize != "" {
+			resourceRequirements = corev1.ResourceRequirements{
+				Limits:   nil,
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(backup.Spec.PvcSize)},
+			}
+		} else {
+			sts := &appsv1.StatefulSet{}
+			if err := r.Get(ctx, types.NamespacedName{Name: backup.Spec.Node, Namespace: backup.Namespace}, sts); err != nil {
+				return nil, err
+			}
+			pvcs := sts.Spec.VolumeClaimTemplates
+			for _, pvc := range pvcs {
+				if pvc.Name == "datadir" {
+					resourceRequirements = pvc.Spec.Resources
+					break
+				}
 			}
 		}
 		pvcSourceName = fmt.Sprintf("datadir-%s-0", backup.Spec.Node)

@@ -35,6 +35,8 @@ type BackupSpec struct {
 	DeployMethod nodepkg.DeployMethod `json:"deployMethod"`
 	// StorageClass
 	StorageClass string `json:"storageClass,omitempty"`
+	// PvcSize
+	PvcSize string `json:"pvcSize,omitempty"`
 	// Action
 	Action nodepkg.Action `json:"action,omitempty"`
 	// Image

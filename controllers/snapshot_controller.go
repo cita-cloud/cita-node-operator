@@ -24,6 +24,7 @@ import (
 	v1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
@@ -242,12 +243,19 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 		if pvcSourceName == "" {
 			return nil, fmt.Errorf("cann't get deployment's pvc")
 		}
-		pvc := &corev1.PersistentVolumeClaim{}
-		err = r.Get(ctx, types.NamespacedName{Name: pvcSourceName, Namespace: snapshot.Namespace}, pvc)
-		if err != nil {
-			return nil, err
+		if snapshot.Spec.PvcSize != "" {
+			resourceRequirements = corev1.ResourceRequirements{
+				Limits:   nil,
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(snapshot.Spec.PvcSize)},
+			}
+		} else {
+			pvc := &corev1.PersistentVolumeClaim{}
+			err := r.Get(ctx, types.NamespacedName{Name: pvcSourceName, Namespace: snapshot.Namespace}, pvc)
+			if err != nil {
+				return nil, err
+			}
+			resourceRequirements = pvc.Spec.Resources
 		}
-		resourceRequirements = pvc.Spec.Resources
 		crypto, consensus = filterCryptoAndConsensus(deploy.Spec.Template.Spec.Containers)
 	} else {
 		sts := &appsv1.StatefulSet{}
@@ -255,12 +263,18 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 		if err != nil {
 			return nil, err
 		}
-
-		pvcs := sts.Spec.VolumeClaimTemplates
-		for _, pvc := range pvcs {
-			if pvc.Name == "datadir" {
-				resourceRequirements = pvc.Spec.Resources
-				break
+		if snapshot.Spec.PvcSize != "" {
+			resourceRequirements = corev1.ResourceRequirements{
+				Limits:   nil,
+				Requests: corev1.ResourceList{corev1.ResourceStorage: resource.MustParse(snapshot.Spec.PvcSize)},
+			}
+		} else {
+			pvcs := sts.Spec.VolumeClaimTemplates
+			for _, pvc := range pvcs {
+				if pvc.Name == "datadir" {
+					resourceRequirements = pvc.Spec.Resources
+					break
+				}
 			}
 		}
 		pvcSourceName = fmt.Sprintf("datadir-%s-0", snapshot.Spec.Node)
