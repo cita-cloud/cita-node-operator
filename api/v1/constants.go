@@ -35,3 +35,8 @@ const (
 )
 
 const DefaultImage = "citacloud/cita-node-job:v0.0.2"
+
+type Backend struct {
+	Pvc string `json:"pvc,omitempty"`
+	Dir string `json:"dir,omitempty"`
+}
