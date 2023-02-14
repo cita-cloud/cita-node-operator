@@ -35,6 +35,8 @@ type Backup struct {
 	node         string
 	deployMethod string
 	action       string
+	sourcePath   string
+	destPath     string
 }
 
 var backup = Backup{}
@@ -50,6 +52,8 @@ func NewBackup() *cobra.Command {
 	cc.Flags().StringVarP(&backup.node, "node", "", "", "The node that you want to backup.")
 	cc.Flags().StringVarP(&backup.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
 	cc.Flags().StringVarP(&backup.action, "action", "a", "StopAndStart", "The action when node backup.")
+	cc.Flags().StringVarP(&backup.sourcePath, "source-path", "", "/backup-source", "The path you want to backup.")
+	cc.Flags().StringVarP(&backup.destPath, "dest-path", "", "/backup-dest", "The path you want to save.")
 	return cc
 }
 
@@ -97,7 +101,7 @@ func backupFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Backup(ctx, action)
+		return node.Backup(ctx, action, backup.sourcePath, backup.destPath)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec backup failed")

@@ -72,7 +72,7 @@ func (h *helmNode) ChangeOwner(ctx context.Context, action node.Action, uid, gid
 	panic("implement me")
 }
 
-func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
+func (h *helmNode) Restore(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
 	if action == node.StopAndStart {
 		if err := h.Stop(ctx); err != nil {
 			return err
@@ -81,7 +81,7 @@ func (h *helmNode) Restore(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	if err := h.behavior.Restore(citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, h.name)); err != nil {
+	if err := h.behavior.Restore(sourcePath, destPath); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -179,7 +179,7 @@ func (h *helmNode) Start(ctx context.Context) error {
 	return nil
 }
 
-func (h *helmNode) Backup(ctx context.Context, action node.Action) error {
+func (h *helmNode) Backup(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
 	if action == node.StopAndStart {
 		err := h.Stop(ctx)
 		if err != nil {
@@ -191,7 +191,7 @@ func (h *helmNode) Backup(ctx context.Context, action node.Action) error {
 		}
 	}
 
-	totalSize, err := h.behavior.Backup(fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, h.name), citacloudv1.BackupDestVolumePath)
+	totalSize, err := h.behavior.Backup(sourcePath, destPath)
 	if err != nil {
 		return err
 	}

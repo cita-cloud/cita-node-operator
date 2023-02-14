@@ -35,6 +35,8 @@ type Restore struct {
 	node         string
 	deployMethod string
 	action       string
+	sourcePath   string
+	destPath     string
 }
 
 var restore = Restore{}
@@ -50,6 +52,8 @@ func NewRestore() *cobra.Command {
 	cc.Flags().StringVarP(&restore.node, "node", "", "", "The node that you want to restore.")
 	cc.Flags().StringVarP(&restore.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
 	cc.Flags().StringVarP(&restore.action, "action", "a", "StopAndStart", "The action when node restore.")
+	cc.Flags().StringVarP(&restore.sourcePath, "source-path", "", "/restore-source", "The path you want to restore.")
+	cc.Flags().StringVarP(&restore.destPath, "dest-path", "", "/restore-dest", "The path you want to save.")
 	return cc
 }
 
@@ -97,7 +101,7 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Restore(ctx, action)
+		return node.Restore(ctx, action, restore.sourcePath, restore.destPath)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec restore failed")

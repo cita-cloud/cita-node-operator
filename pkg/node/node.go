@@ -44,8 +44,8 @@ type Node interface {
 	CheckStopped(ctx context.Context) error
 	Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error
 	Start(ctx context.Context) error
-	Backup(ctx context.Context, action Action) error
-	Restore(ctx context.Context, action Action) error
+	Backup(ctx context.Context, action Action, sourcePath string, destPath string) error
+	Restore(ctx context.Context, action Action, sourcePath string, destPath string) error
 	GetName() string
 	GetAccountConfigmap(ctx context.Context) (string, error)
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"strconv"
 
@@ -248,30 +249,84 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 		pvcSourceName = fmt.Sprintf("datadir-%s-0", duplicate.Spec.Node)
 	}
 
-	volumes := []corev1.Volume{
-		{
-			Name: citacloudv1.BackupSourceVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: pvcSourceName,
-					ReadOnly:  false,
+	var volumes []corev1.Volume
+	var volumeMounts []corev1.VolumeMount
+	var onePvc bool
+	if pvcSourceName != duplicate.Spec.Backend.Pvc {
+		// different
+		volumes = []corev1.Volume{
+			{
+				Name: citacloudv1.BackupSourceVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvcSourceName,
+						ReadOnly:  false,
+					},
 				},
 			},
-		},
-		{
-			Name: citacloudv1.BackupDestVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: duplicate.Spec.Backend.Pvc,
-					ReadOnly:  false,
+			{
+				Name: citacloudv1.BackupDestVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: duplicate.Spec.Backend.Pvc,
+						ReadOnly:  false,
+					},
 				},
 			},
-		},
+		}
+		volumeMounts = []corev1.VolumeMount{
+			{
+				Name:      citacloudv1.BackupSourceVolumeName,
+				MountPath: citacloudv1.BackupSourceVolumePath,
+			},
+			{
+				Name:      citacloudv1.BackupDestVolumeName,
+				MountPath: citacloudv1.BackupDestVolumePath,
+			},
+		}
+	} else {
+		onePvc = true
+		// same, only mount on /backup-source
+		volumes = []corev1.Volume{
+			{
+				Name: citacloudv1.BackupSourceVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvcSourceName,
+						ReadOnly:  false,
+					},
+				},
+			},
+		}
+		volumeMounts = []corev1.VolumeMount{
+			{
+				Name:      citacloudv1.BackupSourceVolumeName,
+				MountPath: citacloudv1.BackupSourceVolumePath,
+			},
+		}
 	}
 
 	nodeKey, err := GetNodeLabelKeyByType(duplicate.Spec.DeployMethod)
 	if err != nil {
 		return nil, err
+	}
+
+	arg := []string{
+		"backup",
+		"--namespace", duplicate.Namespace,
+		"--chain", duplicate.Spec.Chain,
+		"--node", duplicate.Spec.Node,
+		"--deploy-method", string(duplicate.Spec.DeployMethod),
+		"--action", string(duplicate.Spec.Action),
+	}
+
+	if onePvc {
+		// maybe deployment
+		arg = append(arg, "--source-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Node))
+		arg = append(arg, "--dest-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Backend.Dir))
+	} else {
+		arg = append(arg, "--source-path", citacloudv1.BackupSourceVolumePath)
+		arg = append(arg, "--dest-path", filepath.Join(citacloudv1.BackupDestVolumePath, duplicate.Spec.Backend.Dir))
 	}
 
 	job := &v1.Job{
@@ -299,25 +354,8 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: []string{
-								"backup",
-								"--namespace", duplicate.Namespace,
-								"--chain", duplicate.Spec.Chain,
-								"--node", duplicate.Spec.Node,
-								"--deploy-method", string(duplicate.Spec.DeployMethod),
-								"--action", string(duplicate.Spec.Action),
-							},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      citacloudv1.BackupSourceVolumeName,
-									MountPath: citacloudv1.BackupSourceVolumePath,
-								},
-								{
-									Name:      citacloudv1.BackupDestVolumeName,
-									MountPath: citacloudv1.BackupDestVolumePath,
-									SubPath:   duplicate.Spec.Backend.Dir,
-								},
-							},
+							Args:         arg,
+							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
 								{
 									Name: POD_NAME_ENV,

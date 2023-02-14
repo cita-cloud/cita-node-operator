@@ -26,6 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
+	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -239,6 +240,17 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 		return nil, err
 	}
 
+	arg := []string{
+		"restore",
+		"--namespace", recoverCR.Namespace,
+		"--chain", recoverCR.Spec.Chain,
+		"--node", recoverCR.Spec.Node,
+		"--deploy-method", string(recoverCR.Spec.DeployMethod),
+		"--action", string(recoverCR.Spec.Action),
+		"--source-path", filepath.Join(citacloudv1.RestoreSourceVolumePath, recoverCR.Spec.Backend.Dir),
+		"--dest-path", citacloudv1.RestoreDestVolumePath,
+	}
+
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      recoverCR.Name,
@@ -264,14 +276,7 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: []string{
-								"restore",
-								"--namespace", recoverCR.Namespace,
-								"--chain", recoverCR.Spec.Chain,
-								"--node", recoverCR.Spec.Node,
-								"--deploy-method", string(recoverCR.Spec.DeployMethod),
-								"--action", string(recoverCR.Spec.Action),
-							},
+							Args: arg,
 							Env: []corev1.EnvVar{
 								{
 									Name: POD_NAME_ENV,
@@ -294,7 +299,6 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 								{
 									Name:      citacloudv1.RestoreSourceVolumeName,
 									MountPath: citacloudv1.RestoreSourceVolumePath,
-									SubPath:   recoverCR.Spec.Backend.Dir,
 								},
 								{
 									Name:      citacloudv1.RestoreDestVolumeName,

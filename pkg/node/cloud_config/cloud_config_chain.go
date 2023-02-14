@@ -118,7 +118,7 @@ func (c *cloudConfigNode) ChangeOwner(ctx context.Context, action node.Action, u
 	return nil
 }
 
-func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error {
+func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
 	if action == node.StopAndStart {
 		if err := c.Stop(ctx); err != nil {
 			return err
@@ -127,7 +127,7 @@ func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action) error
 			return err
 		}
 	}
-	if err := c.behavior.Restore(citacloudv1.RestoreSourceVolumePath, citacloudv1.RestoreDestVolumePath); err != nil {
+	if err := c.behavior.Restore(sourcePath, destPath); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -281,7 +281,7 @@ func (c *cloudConfigNode) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *cloudConfigNode) Backup(ctx context.Context, action node.Action) error {
+func (c *cloudConfigNode) Backup(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
 	if action == node.StopAndStart {
 		err := c.Stop(ctx)
 		if err != nil {
@@ -292,7 +292,15 @@ func (c *cloudConfigNode) Backup(ctx context.Context, action node.Action) error 
 			return err
 		}
 	}
-	totalSize, err := c.behavior.Backup(citacloudv1.BackupSourceVolumePath, citacloudv1.BackupDestVolumePath)
+
+	if _, err := os.Stat(destPath); os.IsNotExist(err) {
+		err := os.MkdirAll(destPath, os.ModeDir+os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	totalSize, err := c.behavior.Backup(sourcePath, destPath)
 	if err != nil {
 		return err
 	}
