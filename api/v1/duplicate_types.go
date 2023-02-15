@@ -45,6 +45,8 @@ type DuplicateSpec struct {
 	TTLSecondsAfterFinished int64 `json:"ttlSecondsAfterFinished,omitempty"`
 	// PodAffinityFlag weather or not the job's affinity with chain node's pod. Notice: helm chain must be false
 	PodAffinityFlag bool `json:"podAffinityFlag,omitempty"`
+	// Compression
+	Compress *Compress `json:"compress,omitempty"`
 }
 
 // DuplicateStatus defines the observed state of Duplicate
@@ -53,6 +55,8 @@ type DuplicateStatus struct {
 	Allocate int64 `json:"allocate,omitempty"`
 	// Actual
 	Actual int64 `json:"actual,omitempty"`
+	// Md5 info
+	Md5 string `json:"md5,omitempty"`
 	// Status
 	Status JobConditionType `json:"status,omitempty"`
 	// StartTime

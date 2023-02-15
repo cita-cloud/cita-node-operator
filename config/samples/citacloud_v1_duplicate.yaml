@@ -14,8 +14,11 @@ spec:
     dir: my-chain-0
   action: StopAndStart
   pullPolicy: Always
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:tar
   podAffinityFlag: true
   ttlSecondsAfterFinished: 300
+  compression:
+    type: gzip
+    output: cita.tar.gz
 
 

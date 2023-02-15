@@ -49,6 +49,14 @@ spec:
               chain:
                 description: Chain
                 type: string
+              decompress:
+                description: Decompress
+                properties:
+                  md5:
+                    type: string
+                  path:
+                    type: string
+                type: object
               deployMethod:
                 description: DeployMethod
                 type: string

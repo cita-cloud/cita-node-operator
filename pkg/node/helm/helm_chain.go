@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/cita-cloud/cita-node-operator/pkg/node/behavior"
 	appsv1 "k8s.io/api/apps/v1"
@@ -31,7 +32,6 @@ import (
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
 	"time"
 )
 
@@ -72,7 +72,11 @@ func (h *helmNode) ChangeOwner(ctx context.Context, action node.Action, uid, gid
 	panic("implement me")
 }
 
-func (h *helmNode) Restore(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
+func (h *helmNode) Restore(ctx context.Context,
+	action node.Action,
+	sourcePath string,
+	destPath string,
+	options *common.DecompressOptions) error {
 	if action == node.StopAndStart {
 		if err := h.Stop(ctx); err != nil {
 			return err
@@ -81,7 +85,7 @@ func (h *helmNode) Restore(ctx context.Context, action node.Action, sourcePath s
 			return err
 		}
 	}
-	if err := h.behavior.Restore(sourcePath, destPath); err != nil {
+	if err := h.behavior.Restore(sourcePath, destPath, options); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -179,35 +183,12 @@ func (h *helmNode) Start(ctx context.Context) error {
 	return nil
 }
 
-func (h *helmNode) Backup(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
-	if action == node.StopAndStart {
-		err := h.Stop(ctx)
-		if err != nil {
-			return err
-		}
-		err = h.CheckStopped(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	totalSize, err := h.behavior.Backup(sourcePath, destPath)
-	if err != nil {
-		return err
-	}
-
-	annotations := map[string]string{"backup-size": strconv.FormatInt(totalSize, 10)}
-	err = h.AddAnnotations(ctx, annotations)
-	if err != nil {
-		return err
-	}
-	if action == node.StopAndStart {
-		err = h.Start(ctx)
-		if err != nil {
-			return err
-		}
-	}
-	return err
+func (h *helmNode) Backup(ctx context.Context,
+	action node.Action,
+	sourcePath string,
+	destPath string,
+	options *common.CompressOptions) error {
+	return nil
 }
 
 func (h *helmNode) AddAnnotations(ctx context.Context, annotations map[string]string) error {

@@ -244,7 +244,7 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 		return nil, err
 	}
 
-	arg := []string{
+	args := []string{
 		"restore",
 		"--namespace", recoverCR.Namespace,
 		"--chain", recoverCR.Spec.Chain,
@@ -253,6 +253,11 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 		"--action", string(recoverCR.Spec.Action),
 		"--source-path", recoverCR.Spec.Backend.Path,
 		"--dest-path", citacloudv1.RestoreDestVolumePath,
+	}
+	if recoverCR.Spec.Decompress != nil {
+		args = append(args, "--decompress")
+		args = append(args, "--md5", recoverCR.Spec.Decompress.Md5)
+		args = append(args, "--input", recoverCR.Spec.Decompress.File)
 	}
 
 	job := &v1.Job{
@@ -280,7 +285,7 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: arg,
+							Args: args,
 							Env: []corev1.EnvVar{
 								{
 									Name: POD_NAME_ENV,

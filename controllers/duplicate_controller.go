@@ -167,6 +167,7 @@ func (r *DuplicateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 		cur.Status.Actual = backupSize
+		cur.Status.Md5 = podList.Items[0].Annotations["md5"]
 		cur.Status.EndTime = job.Status.CompletionTime
 	}
 	if !IsEqual(cur, duplicate) {
@@ -316,8 +317,7 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 	if err != nil {
 		return nil, err
 	}
-
-	arg := []string{
+	args := []string{
 		"backup",
 		"--namespace", duplicate.Namespace,
 		"--chain", duplicate.Spec.Chain,
@@ -328,11 +328,20 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 
 	if onePvc {
 		// maybe deployment
-		arg = append(arg, "--source-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Node))
-		arg = append(arg, "--dest-path", duplicate.Spec.Backend.Path)
+		args = append(args, "--source-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Node))
+		args = append(args, "--dest-path", duplicate.Spec.Backend.Path)
 	} else {
-		arg = append(arg, "--source-path", citacloudv1.BackupSourceVolumePath)
-		arg = append(arg, "--dest-path", duplicate.Spec.Backend.Path)
+		args = append(args, "--source-path", citacloudv1.BackupSourceVolumePath)
+		args = append(args, "--dest-path", duplicate.Spec.Backend.Path)
+	}
+	if duplicate.Spec.Compress != nil {
+		args = append(args, "--compress")
+		args = append(args, "--compress-type", string(duplicate.Spec.Compress.CType))
+		if duplicate.Spec.Compress.File != "" {
+			args = append(args, "--output", duplicate.Spec.Compress.File)
+		} else {
+			args = append(args, "--output", duplicate.Name)
+		}
 	}
 
 	job := &v1.Job{
@@ -360,7 +369,7 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args:         arg,
+							Args:         args,
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
 								{

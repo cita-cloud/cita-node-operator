@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/cita-cloud/cita-node-operator/pkg/node/behavior"
 	appsv1 "k8s.io/api/apps/v1"
@@ -118,7 +119,11 @@ func (c *cloudConfigNode) ChangeOwner(ctx context.Context, action node.Action, u
 	return nil
 }
 
-func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
+func (c *cloudConfigNode) Restore(ctx context.Context,
+	action node.Action,
+	sourcePath string,
+	destPath string,
+	options *common.DecompressOptions) error {
 	if action == node.StopAndStart {
 		if err := c.Stop(ctx); err != nil {
 			return err
@@ -127,7 +132,7 @@ func (c *cloudConfigNode) Restore(ctx context.Context, action node.Action, sourc
 			return err
 		}
 	}
-	if err := c.behavior.Restore(sourcePath, destPath); err != nil {
+	if err := c.behavior.Restore(sourcePath, destPath, options); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -281,7 +286,11 @@ func (c *cloudConfigNode) Start(ctx context.Context) error {
 	return nil
 }
 
-func (c *cloudConfigNode) Backup(ctx context.Context, action node.Action, sourcePath string, destPath string) error {
+func (c *cloudConfigNode) Backup(ctx context.Context,
+	action node.Action,
+	sourcePath string,
+	destPath string,
+	options *common.CompressOptions) error {
 	if action == node.StopAndStart {
 		err := c.Stop(ctx)
 		if err != nil {
@@ -300,12 +309,15 @@ func (c *cloudConfigNode) Backup(ctx context.Context, action node.Action, source
 		}
 	}
 
-	totalSize, err := c.behavior.Backup(sourcePath, destPath)
+	result, err := c.behavior.Backup(sourcePath, destPath, options)
 	if err != nil {
 		return err
 	}
 
-	annotations := map[string]string{"backup-size": strconv.FormatInt(totalSize, 10)}
+	annotations := map[string]string{
+		"backup-size": strconv.FormatInt(result.Size, 10),
+		"md5":         result.Md5,
+	}
 	err = c.AddAnnotations(ctx, annotations)
 	if err != nil {
 		return err

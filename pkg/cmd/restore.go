@@ -37,6 +37,9 @@ type Restore struct {
 	action       string
 	sourcePath   string
 	destPath     string
+	decompress   bool
+	md5          string
+	input        string
 }
 
 var restore = Restore{}
@@ -54,6 +57,9 @@ func NewRestore() *cobra.Command {
 	cc.Flags().StringVarP(&restore.action, "action", "a", "StopAndStart", "The action when node restore.")
 	cc.Flags().StringVarP(&restore.sourcePath, "source-path", "", "/restore-source", "The path you want to restore.")
 	cc.Flags().StringVarP(&restore.destPath, "dest-path", "", "/restore-dest", "The path you want to save.")
+	cc.Flags().BoolVarP(&restore.decompress, "decompress", "", true, "Decompress or not.")
+	cc.Flags().StringVarP(&restore.md5, "md5", "", "", "Md5 check.")
+	cc.Flags().StringVarP(&restore.input, "input", "", "", "Decompress file name.")
 	return cc
 }
 
@@ -94,6 +100,8 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	dcprOpts := common.NewDecompressOptions(restore.decompress, restore.md5, restore.input)
+
 	node, err := nodepkg.CreateNode(dm, restore.namespace, restore.node, k8sClient, restore.chain, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to init node")
@@ -101,7 +109,7 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Restore(ctx, action, restore.sourcePath, restore.destPath)
+		return node.Restore(ctx, action, restore.sourcePath, restore.destPath, dcprOpts)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec restore failed")
