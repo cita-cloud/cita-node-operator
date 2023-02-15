@@ -41,7 +41,7 @@ spec:
               backend:
                 description: Backend
                 properties:
-                  dir:
+                  path:
                     type: string
                   pvc:
                     type: string

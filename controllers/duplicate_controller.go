@@ -252,6 +252,12 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 	var volumes []corev1.Volume
 	var volumeMounts []corev1.VolumeMount
 	var onePvc bool
+
+	mountPoint, err := GetMountPoint(duplicate.Spec.Backend.Path)
+	if err != nil {
+		return nil, err
+	}
+
 	if pvcSourceName != duplicate.Spec.Backend.Pvc {
 		// different
 		volumes = []corev1.Volume{
@@ -281,7 +287,7 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 			},
 			{
 				Name:      citacloudv1.BackupDestVolumeName,
-				MountPath: citacloudv1.BackupDestVolumePath,
+				MountPath: mountPoint,
 			},
 		}
 	} else {
@@ -301,7 +307,7 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 		volumeMounts = []corev1.VolumeMount{
 			{
 				Name:      citacloudv1.BackupSourceVolumeName,
-				MountPath: citacloudv1.BackupSourceVolumePath,
+				MountPath: mountPoint,
 			},
 		}
 	}
@@ -323,10 +329,10 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 	if onePvc {
 		// maybe deployment
 		arg = append(arg, "--source-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Node))
-		arg = append(arg, "--dest-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Backend.Dir))
+		arg = append(arg, "--dest-path", duplicate.Spec.Backend.Path)
 	} else {
 		arg = append(arg, "--source-path", citacloudv1.BackupSourceVolumePath)
-		arg = append(arg, "--dest-path", filepath.Join(citacloudv1.BackupDestVolumePath, duplicate.Spec.Backend.Dir))
+		arg = append(arg, "--dest-path", duplicate.Spec.Backend.Path)
 	}
 
 	job := &v1.Job{

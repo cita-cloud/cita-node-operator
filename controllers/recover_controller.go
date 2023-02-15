@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/pointer"
-	"path/filepath"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -206,6 +205,11 @@ func (r *RecoverReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacloudv1.Recover) (*v1.Job, error) {
 	labels := LabelsForNode(recoverCR.Spec.Chain, recoverCR.Spec.Node)
 
+	mountPoint, err := GetMountPoint(recoverCR.Spec.Backend.Path)
+	if err != nil {
+		return nil, err
+	}
+
 	var pvcDestName string
 
 	if recoverCR.Spec.DeployMethod == nodepkg.PythonOperator {
@@ -247,7 +251,7 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 		"--node", recoverCR.Spec.Node,
 		"--deploy-method", string(recoverCR.Spec.DeployMethod),
 		"--action", string(recoverCR.Spec.Action),
-		"--source-path", filepath.Join(citacloudv1.RestoreSourceVolumePath, recoverCR.Spec.Backend.Dir),
+		"--source-path", recoverCR.Spec.Backend.Path,
 		"--dest-path", citacloudv1.RestoreDestVolumePath,
 	}
 
@@ -298,7 +302,7 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      citacloudv1.RestoreSourceVolumeName,
-									MountPath: citacloudv1.RestoreSourceVolumePath,
+									MountPath: mountPoint,
 								},
 								{
 									Name:      citacloudv1.RestoreDestVolumeName,

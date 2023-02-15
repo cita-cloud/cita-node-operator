@@ -16,9 +16,22 @@ limitations under the License.
 
 package controllers
 
-import "k8s.io/apimachinery/pkg/api/equality"
+import (
+	"fmt"
+	"strings"
+
+	"k8s.io/apimachinery/pkg/api/equality"
+)
 
 // IsEqual check two object is equal.
 func IsEqual(obj1, obj2 interface{}) bool {
 	return equality.Semantic.DeepEqual(obj1, obj2)
+}
+
+func GetMountPoint(path string) (string, error) {
+	res := strings.Split(path, "/")
+	if len(res) < 2 {
+		return "", fmt.Errorf("path invaild")
+	}
+	return fmt.Sprintf("/%s", res[1]), nil
 }
