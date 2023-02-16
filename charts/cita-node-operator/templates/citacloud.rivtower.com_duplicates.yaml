@@ -41,7 +41,7 @@ spec:
               backend:
                 description: Backend
                 properties:
-                  dir:
+                  path:
                     type: string
                   pvc:
                     type: string
@@ -49,6 +49,14 @@ spec:
               chain:
                 description: Chain
                 type: string
+              compress:
+                description: Compression
+                properties:
+                  file:
+                    type: string
+                  type:
+                    type: string
+                type: object
               deployMethod:
                 description: DeployMethod
                 type: string
@@ -93,6 +101,9 @@ spec:
               endTime:
                 description: EndTime
                 format: date-time
+                type: string
+              md5:
+                description: Md5 info
                 type: string
               message:
                 description: Message
