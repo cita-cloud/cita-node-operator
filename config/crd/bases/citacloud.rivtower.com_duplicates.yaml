@@ -52,7 +52,7 @@ spec:
               compress:
                 description: Compression
                 properties:
-                  output:
+                  file:
                     type: string
                   type:
                     type: string

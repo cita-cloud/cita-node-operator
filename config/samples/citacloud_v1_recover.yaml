@@ -9,9 +9,12 @@ spec:
   deployMethod: cloud-config
   backend:
     pvc: local-pvc
-    dir: my-chain-0
+    path: /data/my-chain-0
   action: StopAndStart
   pullPolicy: Always
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:compress
   podAffinityFlag: true
-  ttlSecondsAfterFinished: 60
+  ttlSecondsAfterFinished: 300
+  decompress:
+    file: cita.tar.gz
+

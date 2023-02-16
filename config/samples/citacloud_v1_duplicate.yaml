@@ -5,20 +5,18 @@ metadata:
   namespace: zhujq
 spec:
   chain: test-chain-zenoh-overlord
-#  chain: test-chain-zenoh-raft
   node: test-chain-zenoh-overlord-node0
-#  node: test-chain-zenoh-raft-node0
   deployMethod: cloud-config
   backend:
     pvc: local-pvc
-    dir: my-chain-0
+    path: /data/my-chain-0
   action: StopAndStart
   pullPolicy: Always
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:tar
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:compress
   podAffinityFlag: true
   ttlSecondsAfterFinished: 300
-  compression:
-    type: gzip
-    output: cita.tar.gz
+#  compress:
+#    type: gzip
+#    file: cita.tar.gz
 
 

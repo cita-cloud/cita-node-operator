@@ -57,7 +57,7 @@ func NewRestore() *cobra.Command {
 	cc.Flags().StringVarP(&restore.action, "action", "a", "StopAndStart", "The action when node restore.")
 	cc.Flags().StringVarP(&restore.sourcePath, "source-path", "", "/restore-source", "The path you want to restore.")
 	cc.Flags().StringVarP(&restore.destPath, "dest-path", "", "/restore-dest", "The path you want to save.")
-	cc.Flags().BoolVarP(&restore.decompress, "decompress", "", true, "Decompress or not.")
+	cc.Flags().BoolVarP(&restore.decompress, "decompress", "", false, "Decompress or not.")
 	cc.Flags().StringVarP(&restore.md5, "md5", "", "", "Md5 check.")
 	cc.Flags().StringVarP(&restore.input, "input", "", "", "Decompress file name.")
 	return cc

@@ -52,9 +52,9 @@ spec:
               decompress:
                 description: Decompress
                 properties:
-                  md5:
+                  file:
                     type: string
-                  path:
+                  md5:
                     type: string
                 type: object
               deployMethod:

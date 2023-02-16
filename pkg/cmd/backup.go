@@ -59,7 +59,7 @@ func NewBackup() *cobra.Command {
 	cc.Flags().StringVarP(&backup.action, "action", "a", "StopAndStart", "The action when node backup.")
 	cc.Flags().StringVarP(&backup.sourcePath, "source-path", "", "/backup-source", "The path you want to backup.")
 	cc.Flags().StringVarP(&backup.destPath, "dest-path", "", "/backup-dest", "The path you want to save.")
-	cc.Flags().BoolVarP(&backup.compress, "compress", "", true, "Compress or not.")
+	cc.Flags().BoolVarP(&backup.compress, "compress", "", false, "Compress or not.")
 	cc.Flags().StringVarP(&backup.compressType, "compress-type", "", "gzip", "Compress type.")
 	cc.Flags().StringVarP(&backup.output, "output", "o", "", "Compressed file name.")
 	return cc
