@@ -328,7 +328,7 @@ func (r *DuplicateReconciler) jobForDuplicate(ctx context.Context, duplicate *ci
 
 	if onePvc {
 		// maybe deployment
-		args = append(args, "--source-path", filepath.Join(citacloudv1.BackupSourceVolumePath, duplicate.Spec.Node))
+		args = append(args, "--source-path", filepath.Join(mountPoint, duplicate.Spec.Node))
 		args = append(args, "--dest-path", duplicate.Spec.Backend.Path)
 	} else {
 		args = append(args, "--source-path", citacloudv1.BackupSourceVolumePath)
