@@ -18,9 +18,16 @@ package common
 
 import (
 	"context"
+	"crypto/md5"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/mholt/archiver/v4"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"os"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -46,4 +53,99 @@ func AddLogToPodAnnotation(ctx context.Context, client client.Client, fn func() 
 		return jobErr
 	}
 	return nil
+}
+
+func Archive(ctx context.Context, inputFiles map[string]string, outputFile string) error {
+	files, err := archiver.FilesFromDisk(nil, inputFiles)
+	if err != nil {
+		return err
+	}
+	// create the output file we'll write to
+	out, err := os.Create(outputFile)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	// we can use the CompressedArchive type to gzip a tarball
+	// (compression is not required; you could use Tar directly)
+	format := archiver.CompressedArchive{
+		Compression: archiver.Gz{},
+		Archival:    archiver.Tar{},
+	}
+	// create the archive
+	err = format.Archive(ctx, out, files)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UnArchive(ctx context.Context, sourceFile string, targetPath string) error {
+	source, err := os.Open(sourceFile)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+	sourceName := filepath.Base(sourceFile)
+	format, reader, err := archiver.Identify(sourceName, source)
+	if err != nil {
+		return err
+	}
+
+	err = format.(archiver.Extractor).Extract(ctx, reader, nil, func(ctx context.Context, f archiver.File) error {
+		if strings.Contains(f.NameInArchive, "__MACOSX") {
+			return nil
+		}
+
+		wp := filepath.Join(targetPath, f.NameInArchive)
+
+		if f.IsDir() {
+			if err := os.MkdirAll(wp, os.ModePerm); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+
+		wf, err := os.Create(wp)
+		if err != nil {
+			return err
+		}
+		defer wf.Close()
+
+		if _, err := io.Copy(wf, rc); err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CalcFileMD5(filename string) (string, error) {
+	f, err := os.Open(filename)
+	if nil != err {
+		fmt.Println(err)
+		return "", err
+	}
+	defer f.Close()
+
+	md5Handle := md5.New()
+	_, err = io.Copy(md5Handle, f)
+	if nil != err {
+		fmt.Println(err)
+		return "", err
+	}
+	md := md5Handle.Sum(nil)
+	md5str := fmt.Sprintf("%x", md)
+	return md5str, nil
 }

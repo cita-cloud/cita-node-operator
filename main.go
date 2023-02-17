@@ -131,6 +131,20 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "ChangeOwner")
 		os.Exit(1)
 	}
+	if err = (&controllers.DuplicateReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Duplicate")
+		os.Exit(1)
+	}
+	if err = (&controllers.RecoverReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Recover")
+		os.Exit(1)
+	}
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

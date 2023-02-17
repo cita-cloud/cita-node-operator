@@ -218,6 +218,58 @@ rules:
 - apiGroups:
   - citacloud.rivtower.com
   resources:
+  - duplicates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - duplicates/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - duplicates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - recovers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - recovers/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
+  - recovers/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - citacloud.rivtower.com
+  resources:
   - restores
   verbs:
   - create

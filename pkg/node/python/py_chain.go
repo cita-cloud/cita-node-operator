@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
 	"github.com/cita-cloud/cita-node-operator/pkg/node/behavior"
 	appsv1 "k8s.io/api/apps/v1"
@@ -86,7 +87,11 @@ func (p *pyNode) ChangeOwner(ctx context.Context, action node.Action, uid, gid i
 	return nil
 }
 
-func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
+func (p *pyNode) Restore(ctx context.Context,
+	action node.Action,
+	sourcePath string,
+	destPath string,
+	options *common.DecompressOptions) error {
 	if action == node.StopAndStart {
 		if err := p.Stop(ctx); err != nil {
 			return err
@@ -95,7 +100,7 @@ func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 			return err
 		}
 	}
-	if err := p.behavior.Restore(citacloudv1.RestoreSourceVolumePath, fmt.Sprintf("%s/%s", citacloudv1.RestoreDestVolumePath, p.name)); err != nil {
+	if err := p.behavior.Restore(sourcePath, destPath, options); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -106,7 +111,11 @@ func (p *pyNode) Restore(ctx context.Context, action node.Action) error {
 	return nil
 }
 
-func (p *pyNode) Backup(ctx context.Context, action node.Action) error {
+func (p *pyNode) Backup(ctx context.Context,
+	action node.Action,
+	sourcePath string,
+	destPath string,
+	options *common.CompressOptions) error {
 	if action == node.StopAndStart {
 		err := p.Stop(ctx)
 		if err != nil {
@@ -118,12 +127,24 @@ func (p *pyNode) Backup(ctx context.Context, action node.Action) error {
 		}
 	}
 
-	totalSize, err := p.behavior.Backup(fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name), citacloudv1.BackupDestVolumePath)
+	if _, err := os.Stat(destPath); os.IsNotExist(err) {
+		err := os.MkdirAll(destPath, os.ModeDir+os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	result, err := p.behavior.Backup(
+		sourcePath,
+		destPath,
+		options)
 	if err != nil {
 		return err
 	}
 
-	annotations := map[string]string{"backup-size": strconv.FormatInt(totalSize, 10)}
+	annotations := map[string]string{
+		"backup-size": strconv.FormatInt(result.Size, 10),
+		"md5":         result.Md5}
 	err = p.AddAnnotations(ctx, annotations)
 	if err != nil {
 		return err
@@ -185,6 +206,18 @@ func (p *pyNode) CheckStopped(ctx context.Context) error {
 			return false, err
 		}
 		if found.Status.ReadyReplicas != 0 {
+			return false, nil
+		}
+		// check pod status，maybe pod current status is Terminating, we also should wait this pod deleted.
+		podList := &corev1.PodList{}
+		podOpts := []client.ListOption{
+			client.InNamespace(p.namespace),
+			client.MatchingLabels(map[string]string{"node_name": p.name}),
+		}
+		if err := p.List(ctx, podList, podOpts...); err != nil {
+			return false, err
+		}
+		if len(podList.Items) == 1 {
 			return false, nil
 		}
 		return true, nil

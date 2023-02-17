@@ -1,0 +1,20 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Recover
+metadata:
+  name: recover-sample
+  namespace: zhujq
+spec:
+  chain: test-chain-zenoh-overlord
+  node: test-chain-zenoh-overlord-node0
+  deployMethod: cloud-config
+  backend:
+    pvc: local-pvc
+    path: /data/my-chain-0
+  action: StopAndStart
+  pullPolicy: Always
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:compress
+  podAffinityFlag: true
+  ttlSecondsAfterFinished: 300
+  decompress:
+    file: cita.tar.gz
+

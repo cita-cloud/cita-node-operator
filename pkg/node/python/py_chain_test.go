@@ -19,6 +19,7 @@ package python
 import (
 	"context"
 	"fmt"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -101,7 +102,8 @@ var _ = Describe("Fallback for python node", func() {
 
 			chain, err := nodepkg.CreateNode(nodepkg.PythonOperator, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
-			err = chain.Backup(ctx, nodepkg.StopAndStart)
+			cprOpts := common.NewCompressOptions(true, "gzip", "backup.tar.gz")
+			err = chain.Backup(ctx, nodepkg.StopAndStart, "/tmp/backup-source", "/tmp/backup-dest", cprOpts)
 			Expect(err).NotTo(HaveOccurred())
 		})
 

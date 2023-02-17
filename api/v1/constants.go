@@ -35,3 +35,24 @@ const (
 )
 
 const DefaultImage = "citacloud/cita-node-job:v0.0.2"
+
+type Backend struct {
+	Pvc  string `json:"pvc,omitempty"`
+	Path string `json:"path,omitempty"`
+}
+
+type Compress struct {
+	CType CompressType `json:"type,omitempty"`
+	File  string       `json:"file,omitempty"`
+}
+
+type CompressType string
+
+const (
+	Gzip CompressType = "gzip"
+)
+
+type Decompress struct {
+	Md5  string `json:"md5,omitempty"`
+	File string `json:"file,omitempty"`
+}

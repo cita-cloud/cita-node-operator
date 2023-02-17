@@ -17,18 +17,33 @@ limitations under the License.
 package behavior
 
 import (
+	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/utils/exec"
+
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 )
 
+type Result struct {
+	Size int64
+	Md5  string
+}
+
+func newResult(size int64, md5 string) *Result {
+	return &Result{
+		Size: size,
+		Md5:  md5,
+	}
+}
+
 type Interface interface {
-	Backup(sourcePath string, destPath string) (int64, error)
-	Restore(sourcePath string, destPath string) error
+	Backup(sourcePath string, destPath string, options *common.CompressOptions) (*Result, error)
+	Restore(sourcePath string, destPath string, options *common.DecompressOptions) error
 	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error
 	Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error)
 	SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error
@@ -47,48 +62,51 @@ func NewBehavior(execer exec.Interface, logger logr.Logger) Interface {
 	}
 }
 
-func (receiver Behavior) Backup(sourcePath string, destPath string) (int64, error) {
+func (receiver Behavior) Backup(sourcePath string, destPath string, options *common.CompressOptions) (*Result, error) {
+	var md5 string
 	totalSize, err := receiver.calculateSize(sourcePath)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
 	receiver.logger.Info(fmt.Sprintf("calculate backup total size success: [%d]", totalSize))
 
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
-	done := make(chan bool)
-
-	go func() {
-		_ = receiver.backup(sourcePath, destPath)
-		done <- true
-	}()
-
-LOOP:
-	for {
-		select {
-		case <-done:
-			break LOOP
-		case <-ticker.C:
-			// calculate progress
-			currentSize, err := receiver.calculateSize(destPath)
-			if err != nil {
-				receiver.logger.Error(err, "calculate current size failed")
-				return 0, err
-			}
-			percent, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(currentSize)*100/float64(totalSize)), 64)
-			receiver.logger.Info(fmt.Sprintf("backup progress: [%.2f%%]", percent))
+	// execute backup
+	err = receiver.backup(sourcePath, destPath, options)
+	if err != nil {
+		return nil, err
+	}
+	if options != nil && options.Enable {
+		//  check md5
+		md5, err = common.CalcFileMD5(filepath.Join(destPath, options.Output))
+		if err != nil {
+			return nil, err
 		}
 	}
-
-	return totalSize, nil
+	return newResult(totalSize, md5), nil
 }
 
-func (receiver Behavior) backup(sourcePath string, destPath string) error {
-	err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -a %s/data %s/chain_data %s", sourcePath, sourcePath, destPath)).Run()
-	if err != nil {
-		receiver.logger.Error(err, "copy file failed")
-		return err
+func (receiver Behavior) backup(sourcePath string, destPath string, options *common.CompressOptions) error {
+	if options.Enable {
+		receiver.logger.Info(fmt.Sprintf("compress enable, type: %s, output: %s", options.CType, options.Output))
+		inputFiles := map[string]string{
+			fmt.Sprintf("%s/data", sourcePath):       "",
+			fmt.Sprintf("%s/chain_data", sourcePath): "",
+		}
+		outputFilePath := filepath.Join(destPath, options.Output)
+		err := common.Archive(context.Background(), inputFiles, outputFilePath)
+		if err != nil {
+			receiver.logger.Error(err, "archive file failed")
+			return err
+		}
+	} else {
+		cmd := fmt.Sprintf("cp -a %s/data %s/chain_data %s", sourcePath, sourcePath, destPath)
+		receiver.logger.Info(cmd)
+		err := receiver.execer.Command("/bin/sh", "-c", cmd).Run()
+		if err != nil {
+			receiver.logger.Error(err, "copy file failed")
+			return err
+		}
 	}
 	receiver.logger.Info("copy file completed")
 	return nil
@@ -109,52 +127,46 @@ func (receiver Behavior) calculateSize(path string) (int64, error) {
 	return usage, nil
 }
 
-func (receiver Behavior) Restore(sourcePath string, destPath string) error {
-	totalSize, err := receiver.calculateSize(sourcePath)
-	if err != nil {
-		return err
-	}
-
-	receiver.logger.Info(fmt.Sprintf("calculate need restore total size success: [%d]", totalSize))
-
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
-	done := make(chan bool)
-
-	go func() {
-		_ = receiver.restore(sourcePath, destPath)
-		done <- true
-	}()
-
-LOOP:
-	for {
-		select {
-		case <-done:
-			break LOOP
-		case <-ticker.C:
-			// calculate progress
-			currentSize, err := receiver.calculateSize(destPath)
-			if err != nil {
-				receiver.logger.Error(err, "calculate current size failed")
-				return err
-			}
-			percent, _ := strconv.ParseFloat(fmt.Sprintf("%.2f", float64(currentSize)*100/float64(totalSize)), 64)
-			receiver.logger.Info(fmt.Sprintf("backup progress: [%.2f%%]", percent))
-		}
-	}
-	return nil
+func (receiver Behavior) Restore(sourcePath string, destPath string, options *common.DecompressOptions) error {
+	err := receiver.restore(sourcePath, destPath, options)
+	return err
 }
 
-func (receiver Behavior) restore(sourcePath string, destPath string) error {
-	err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/chain_data %s/data", destPath, destPath)).Run()
-	if err != nil {
-		receiver.logger.Error(err, "clean dest dir failed")
-		return err
-	}
-	err = receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("cp -af %s/chain_data %s/data %s", sourcePath, sourcePath, destPath)).Run()
-	if err != nil {
-		receiver.logger.Error(err, "restore file failed")
-		return err
+func (receiver Behavior) restore(sourcePath string, destPath string, options *common.DecompressOptions) error {
+	if options.Enable {
+		if options.Md5 != "" {
+			md5, err := common.CalcFileMD5(filepath.Join(sourcePath, options.Input))
+			if err != nil {
+				return err
+			}
+			if options.Md5 != md5 {
+				return fmt.Errorf("md5 check error")
+			}
+		}
+		// clean
+		err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/chain_data %s/data", destPath, destPath)).Run()
+		if err != nil {
+			receiver.logger.Error(err, "clean dest dir failed")
+			return err
+		}
+		// unpack
+		err = common.UnArchive(context.Background(), filepath.Join(sourcePath, options.Input), destPath)
+		if err != nil {
+			return err
+		}
+	} else {
+		err := receiver.execer.Command("/bin/sh", "-c", fmt.Sprintf("rm -rf %s/chain_data %s/data", destPath, destPath)).Run()
+		if err != nil {
+			receiver.logger.Error(err, "clean dest dir failed")
+			return err
+		}
+		cmd := fmt.Sprintf("cp -af %s/chain_data %s/data %s", sourcePath, sourcePath, destPath)
+		receiver.logger.Info(cmd)
+		err = receiver.execer.Command("/bin/sh", "-c", cmd).Run()
+		if err != nil {
+			receiver.logger.Error(err, "restore file failed")
+			return err
+		}
 	}
 	receiver.logger.Info("restore file completed")
 	return nil

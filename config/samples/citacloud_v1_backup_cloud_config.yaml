@@ -12,3 +12,4 @@ spec:
   pullPolicy: Always
   image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   podAffinityFlag: true
+  ttlSecondsAfterFinished:

@@ -19,6 +19,7 @@ package node
 import (
 	"context"
 	"fmt"
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	"k8s.io/utils/exec"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -44,8 +45,8 @@ type Node interface {
 	CheckStopped(ctx context.Context) error
 	Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error
 	Start(ctx context.Context) error
-	Backup(ctx context.Context, action Action) error
-	Restore(ctx context.Context, action Action) error
+	Backup(ctx context.Context, action Action, sourcePath string, destPath string, options *common.CompressOptions) error
+	Restore(ctx context.Context, action Action, sourcePath string, destPath string, options *common.DecompressOptions) error
 	GetName() string
 	GetAccountConfigmap(ctx context.Context) (string, error)
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error

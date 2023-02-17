@@ -19,14 +19,16 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"github.com/cita-cloud/cita-node-operator/pkg/common"
-	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
+	"os"
+
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
 	"k8s.io/utils/exec"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/cita-cloud/cita-node-operator/pkg/common"
+	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 )
 
 type Backup struct {
@@ -35,6 +37,11 @@ type Backup struct {
 	node         string
 	deployMethod string
 	action       string
+	sourcePath   string
+	destPath     string
+	compress     bool
+	compressType string
+	output       string
 }
 
 var backup = Backup{}
@@ -50,6 +57,11 @@ func NewBackup() *cobra.Command {
 	cc.Flags().StringVarP(&backup.node, "node", "", "", "The node that you want to backup.")
 	cc.Flags().StringVarP(&backup.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
 	cc.Flags().StringVarP(&backup.action, "action", "a", "StopAndStart", "The action when node backup.")
+	cc.Flags().StringVarP(&backup.sourcePath, "source-path", "", "/backup-source", "The path you want to backup.")
+	cc.Flags().StringVarP(&backup.destPath, "dest-path", "", "/backup-dest", "The path you want to save.")
+	cc.Flags().BoolVarP(&backup.compress, "compress", "", false, "Compress or not.")
+	cc.Flags().StringVarP(&backup.compressType, "compress-type", "", "gzip", "Compress type.")
+	cc.Flags().StringVarP(&backup.output, "output", "o", "", "Compressed file name.")
 	return cc
 }
 
@@ -90,6 +102,8 @@ func backupFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	cprOpts := common.NewCompressOptions(backup.compress, backup.compressType, backup.output)
+
 	node, err := nodepkg.CreateNode(dm, backup.namespace, backup.node, k8sClient, backup.chain, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to init node")
@@ -97,7 +111,7 @@ func backupFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Backup(ctx, action)
+		return node.Backup(ctx, action, backup.sourcePath, backup.destPath, cprOpts)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec backup failed")

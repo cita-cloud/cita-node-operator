@@ -14,24 +14,32 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package common
 
-import (
-	"fmt"
-	"strings"
-
-	"k8s.io/apimachinery/pkg/api/equality"
-)
-
-// IsEqual check two object is equal.
-func IsEqual(obj1, obj2 interface{}) bool {
-	return equality.Semantic.DeepEqual(obj1, obj2)
+type CompressOptions struct {
+	Enable bool
+	CType  string
+	Output string
 }
 
-func GetMountPoint(path string) (string, error) {
-	res := strings.Split(path, "/")
-	if len(res) < 2 {
-		return "", fmt.Errorf("path invaild")
+func NewCompressOptions(enable bool, compressType string, output string) *CompressOptions {
+	return &CompressOptions{
+		Enable: enable,
+		CType:  compressType,
+		Output: output,
 	}
-	return fmt.Sprintf("/%s", res[1]), nil
+}
+
+type DecompressOptions struct {
+	Enable bool
+	Md5    string
+	Input  string
+}
+
+func NewDecompressOptions(enable bool, md5 string, input string) *DecompressOptions {
+	return &DecompressOptions{
+		Enable: enable,
+		Md5:    md5,
+		Input:  input,
+	}
 }
