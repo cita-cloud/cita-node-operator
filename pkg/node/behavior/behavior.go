@@ -63,6 +63,7 @@ func NewBehavior(execer exec.Interface, logger logr.Logger) Interface {
 }
 
 func (receiver Behavior) Backup(sourcePath string, destPath string, options *common.CompressOptions) (*Result, error) {
+	receiver.logger.Info(fmt.Sprintf("source path: %s, dest path: %s", sourcePath, destPath))
 	var md5 string
 	totalSize, err := receiver.calculateSize(sourcePath)
 	if err != nil {
@@ -116,7 +117,7 @@ func (receiver Behavior) calculateSize(path string) (int64, error) {
 	// calculate size
 	usageByte, err := receiver.execer.Command("du", "-sb", path).CombinedOutput()
 	if err != nil {
-		receiver.logger.Info("calculate backup total size failed")
+		receiver.logger.Error(err, "calculate backup total size failed")
 		return 0, err
 	}
 	usageStr := strings.Split(string(usageByte), "\t")

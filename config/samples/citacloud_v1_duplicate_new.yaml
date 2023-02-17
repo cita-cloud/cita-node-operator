@@ -1,0 +1,21 @@
+apiVersion: citacloud.rivtower.com/v1
+kind: Duplicate
+metadata:
+  name: duplicate-sample
+  namespace: rivspace
+spec:
+  chain: chain-822564674749992960
+  node: chain-822564674749992960-0
+  deployMethod: python
+  backend:
+    pvc: resource-management-nas
+    path: /data/zhunew
+  action: Direct
+  pullPolicy: Always
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  ttlSecondsAfterFinished: 300
+#  compress:
+#    type: gzip
+#    file: cita.tar.gz
+
+
