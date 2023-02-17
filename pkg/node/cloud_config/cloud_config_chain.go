@@ -19,6 +19,10 @@ package cloud_config
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"time"
+
 	citacloudv1 "github.com/cita-cloud/cita-node-operator/api/v1"
 	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	"github.com/cita-cloud/cita-node-operator/pkg/node"
@@ -30,11 +34,8 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/exec"
 	"k8s.io/utils/pointer"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"strconv"
-	"time"
 )
 
 var (
