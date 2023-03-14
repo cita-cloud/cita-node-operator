@@ -35,7 +35,7 @@ import (
 func AddLogToPodAnnotation(ctx context.Context, client client.Client, fn func() error) error {
 	jobErr := fn()
 	if jobErr != nil {
-		jobErrMsg := errors.Wrap(jobErr, "foo failed")
+		jobErrMsg := errors.Wrap(jobErr, "execute job failed")
 		// get job's pod
 		pod := &corev1.Pod{}
 		err := client.Get(ctx, types.NamespacedName{
