@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/mholt/archiver/v4"
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,6 +35,7 @@ import (
 func AddLogToPodAnnotation(ctx context.Context, client client.Client, fn func() error) error {
 	jobErr := fn()
 	if jobErr != nil {
+		jobErrMsg := errors.Wrap(jobErr, "execute job failed")
 		// get job's pod
 		pod := &corev1.Pod{}
 		err := client.Get(ctx, types.NamespacedName{
@@ -44,7 +46,7 @@ func AddLogToPodAnnotation(ctx context.Context, client client.Client, fn func() 
 			return err
 		}
 		// update err logs to job's pod
-		annotations := map[string]string{"err-log": jobErr.Error()}
+		annotations := map[string]string{"err-log": fmt.Sprintf("%+v", jobErrMsg)}
 		pod.Annotations = annotations
 		err = client.Update(ctx, pod)
 		if err != nil {
