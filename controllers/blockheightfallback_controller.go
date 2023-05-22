@@ -210,16 +210,7 @@ func (r *BlockHeightFallbackReconciler) jobForBlockHeightFallback(ctx context.Co
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: []string{
-								"fallback",
-								"--namespace", bhf.Namespace,
-								"--chain", bhf.Spec.Chain,
-								"--deploy-method", string(bhf.Spec.DeployMethod),
-								"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
-								"--node", bhf.Spec.Node,
-								"--crypto", crypto,
-								"--consensus", consensus,
-							},
+							Args: r.buildArgs(bhf, crypto, consensus),
 							Env: []corev1.EnvVar{
 								{
 									Name: POD_NAME_ENV,
@@ -451,6 +442,31 @@ func (r *BlockHeightFallbackReconciler) getPyPVC(ctx context.Context, bhf *citac
 
 func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Context, bhf *citacloudv1.BlockHeightFallback) (string, string) {
 	return fmt.Sprintf("datadir-%s-0", bhf.Spec.Node), fmt.Sprintf("%s-config", bhf.Spec.Node)
+}
+
+func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFallback, crypto, consensus string) []string {
+	if crypto != "" {
+		return []string{
+			"fallback",
+			"--namespace", bhf.Namespace,
+			"--chain", bhf.Spec.Chain,
+			"--deploy-method", string(bhf.Spec.DeployMethod),
+			"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+			"--node", bhf.Spec.Node,
+			"--crypto", crypto,
+			"--consensus", consensus,
+		}
+	} else {
+		return []string{
+			"fallback",
+			"--namespace", bhf.Namespace,
+			"--chain", bhf.Spec.Chain,
+			"--deploy-method", string(bhf.Spec.DeployMethod),
+			"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+			"--node", bhf.Spec.Node,
+			"--consensus", consensus,
+		}
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

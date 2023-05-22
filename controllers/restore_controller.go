@@ -420,16 +420,7 @@ func (r *RestoreReconciler) jobForSnapshotRecover(ctx context.Context, restore *
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: []string{
-								"snapshot-recover",
-								"--namespace", restore.Namespace,
-								"--chain", restore.Spec.Chain,
-								"--node", restore.Spec.Node,
-								"--deploy-method", string(restore.Spec.DeployMethod),
-								"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
-								"--crypto", crypto,
-								"--consensus", consensus,
-							},
+							Args: r.buildArgs(restore, crypto, consensus),
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      citacloudv1.RestoreSourceVolumeName,
@@ -456,6 +447,31 @@ func (r *RestoreReconciler) jobForSnapshotRecover(ctx context.Context, restore *
 		return nil, err
 	}
 	return job, nil
+}
+
+func (r *RestoreReconciler) buildArgs(restore *citacloudv1.Restore, crypto, consensus string) []string {
+	if crypto != "" {
+		return []string{
+			"snapshot-recover",
+			"--namespace", restore.Namespace,
+			"--chain", restore.Spec.Chain,
+			"--node", restore.Spec.Node,
+			"--deploy-method", string(restore.Spec.DeployMethod),
+			"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+			"--crypto", crypto,
+			"--consensus", consensus,
+		}
+	} else {
+		return []string{
+			"snapshot-recover",
+			"--namespace", restore.Namespace,
+			"--chain", restore.Spec.Chain,
+			"--node", restore.Spec.Node,
+			"--deploy-method", string(restore.Spec.DeployMethod),
+			"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+			"--consensus", consensus,
+		}
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

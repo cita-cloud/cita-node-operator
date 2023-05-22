@@ -382,16 +382,7 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: []string{
-								"snapshot",
-								"--namespace", snapshot.Namespace,
-								"--chain", snapshot.Spec.Chain,
-								"--node", snapshot.Spec.Node,
-								"--deploy-method", string(snapshot.Spec.DeployMethod),
-								"--block-height", strconv.FormatInt(snapshot.Spec.BlockHeight, 10),
-								"--crypto", crypto,
-								"--consensus", consensus,
-							},
+							Args:         r.buildArgs(snapshot, crypto, consensus),
 							VolumeMounts: volumeMounts,
 							Env: []corev1.EnvVar{
 								{
@@ -423,4 +414,29 @@ func (r *SnapshotReconciler) jobForSnapshot(ctx context.Context, snapshot *citac
 		return nil, err
 	}
 	return job, nil
+}
+
+func (r *SnapshotReconciler) buildArgs(snapshot *citacloudv1.Snapshot, crypto, consensus string) []string {
+	if crypto != "" {
+		return []string{
+			"snapshot",
+			"--namespace", snapshot.Namespace,
+			"--chain", snapshot.Spec.Chain,
+			"--node", snapshot.Spec.Node,
+			"--deploy-method", string(snapshot.Spec.DeployMethod),
+			"--block-height", strconv.FormatInt(snapshot.Spec.BlockHeight, 10),
+			"--crypto", crypto,
+			"--consensus", consensus,
+		}
+	} else {
+		return []string{
+			"snapshot",
+			"--namespace", snapshot.Namespace,
+			"--chain", snapshot.Spec.Chain,
+			"--node", snapshot.Spec.Node,
+			"--deploy-method", string(snapshot.Spec.DeployMethod),
+			"--block-height", strconv.FormatInt(snapshot.Spec.BlockHeight, 10),
+			"--consensus", consensus,
+		}
+	}
 }
