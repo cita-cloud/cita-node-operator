@@ -287,14 +287,7 @@ func (r *RestoreReconciler) jobForRestore(ctx context.Context, restore *citaclou
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: []string{
-								"restore",
-								"--namespace", restore.Namespace,
-								"--chain", restore.Spec.Chain,
-								"--node", restore.Spec.Node,
-								"--deploy-method", string(restore.Spec.DeployMethod),
-								"--action", string(restore.Spec.Action),
-							},
+							Args: r.buildArgsForFile(restore),
 							Env: []corev1.EnvVar{
 								{
 									Name: POD_NAME_ENV,
@@ -420,7 +413,7 @@ func (r *RestoreReconciler) jobForSnapshotRecover(ctx context.Context, restore *
 							Command: []string{
 								"/cita-node-cli",
 							},
-							Args: r.buildArgs(restore, crypto, consensus),
+							Args: r.buildArgsForSnapshot(restore, crypto, consensus),
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      citacloudv1.RestoreSourceVolumeName,
@@ -449,7 +442,30 @@ func (r *RestoreReconciler) jobForSnapshotRecover(ctx context.Context, restore *
 	return job, nil
 }
 
-func (r *RestoreReconciler) buildArgs(restore *citacloudv1.Restore, crypto, consensus string) []string {
+func (r *RestoreReconciler) buildArgsForFile(restore *citacloudv1.Restore) []string {
+	if restore.Spec.DeleteConsensusData {
+		return []string{
+			"restore",
+			"--namespace", restore.Namespace,
+			"--chain", restore.Spec.Chain,
+			"--node", restore.Spec.Node,
+			"--deploy-method", string(restore.Spec.DeployMethod),
+			"--action", string(restore.Spec.Action),
+			"--delete-consensus-data",
+		}
+	} else {
+		return []string{
+			"restore",
+			"--namespace", restore.Namespace,
+			"--chain", restore.Spec.Chain,
+			"--node", restore.Spec.Node,
+			"--deploy-method", string(restore.Spec.DeployMethod),
+			"--action", string(restore.Spec.Action),
+		}
+	}
+}
+
+func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, crypto, consensus string) []string {
 	if crypto != "" {
 		return []string{
 			"snapshot-recover",

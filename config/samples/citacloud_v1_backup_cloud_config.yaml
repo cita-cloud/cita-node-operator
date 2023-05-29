@@ -2,14 +2,14 @@ apiVersion: citacloud.rivtower.com/v1
 kind: Backup
 metadata:
   name: backup-sample-cloud-config
-  namespace: default
+  namespace: zhujq
 spec:
   chain: test-chain-zenoh-overlord
   node: test-chain-zenoh-overlord-node0
   deployMethod: cloud-config
-  pvcSize: 5Gi
-  storageClass: nas-client-provisioner
+#  pvcSize: 5Gi
+  storageClass: nfs-client
   pullPolicy: Always
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:wjj
   podAffinityFlag: true
-  ttlSecondsAfterFinished:
+  ttlSecondsAfterFinished: 300

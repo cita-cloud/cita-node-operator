@@ -91,7 +91,8 @@ func (p *pyNode) Restore(ctx context.Context,
 	action node.Action,
 	sourcePath string,
 	destPath string,
-	options *common.DecompressOptions) error {
+	options *common.DecompressOptions,
+	deleteConsensusData bool) error {
 	if action == node.StopAndStart {
 		if err := p.Stop(ctx); err != nil {
 			return err
@@ -100,7 +101,7 @@ func (p *pyNode) Restore(ctx context.Context,
 			return err
 		}
 	}
-	if err := p.behavior.Restore(sourcePath, destPath, options); err != nil {
+	if err := p.behavior.Restore(sourcePath, destPath, options, deleteConsensusData); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {

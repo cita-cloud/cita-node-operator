@@ -76,7 +76,8 @@ func (h *helmNode) Restore(ctx context.Context,
 	action node.Action,
 	sourcePath string,
 	destPath string,
-	options *common.DecompressOptions) error {
+	options *common.DecompressOptions,
+	deleteConsensusData bool) error {
 	if action == node.StopAndStart {
 		if err := h.Stop(ctx); err != nil {
 			return err
@@ -85,7 +86,7 @@ func (h *helmNode) Restore(ctx context.Context,
 			return err
 		}
 	}
-	if err := h.behavior.Restore(sourcePath, destPath, options); err != nil {
+	if err := h.behavior.Restore(sourcePath, destPath, options, deleteConsensusData); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {

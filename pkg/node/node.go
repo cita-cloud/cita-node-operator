@@ -46,7 +46,7 @@ type Node interface {
 	Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error
 	Start(ctx context.Context) error
 	Backup(ctx context.Context, action Action, sourcePath string, destPath string, options *common.CompressOptions) error
-	Restore(ctx context.Context, action Action, sourcePath string, destPath string, options *common.DecompressOptions) error
+	Restore(ctx context.Context, action Action, sourcePath string, destPath string, options *common.DecompressOptions, deleteConsensusData bool) error
 	GetName() string
 	GetAccountConfigmap(ctx context.Context) (string, error)
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error

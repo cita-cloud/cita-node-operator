@@ -30,16 +30,17 @@ import (
 )
 
 type Restore struct {
-	namespace    string
-	chain        string
-	node         string
-	deployMethod string
-	action       string
-	sourcePath   string
-	destPath     string
-	decompress   bool
-	md5          string
-	input        string
+	namespace           string
+	chain               string
+	node                string
+	deployMethod        string
+	action              string
+	sourcePath          string
+	destPath            string
+	decompress          bool
+	md5                 string
+	input               string
+	deleteConsensusData bool
 }
 
 var restore = Restore{}
@@ -60,6 +61,7 @@ func NewRestore() *cobra.Command {
 	cc.Flags().BoolVarP(&restore.decompress, "decompress", "", false, "Decompress or not.")
 	cc.Flags().StringVarP(&restore.md5, "md5", "", "", "Md5 check.")
 	cc.Flags().StringVarP(&restore.input, "input", "", "", "Decompress file name.")
+	cc.Flags().BoolVarP(&restore.deleteConsensusData, "delete-consensus-data", "", false, "Delete consensus data or not.")
 	return cc
 }
 
@@ -109,7 +111,7 @@ func restoreFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Restore(ctx, action, restore.sourcePath, restore.destPath, dcprOpts)
+		return node.Restore(ctx, action, restore.sourcePath, restore.destPath, dcprOpts, restore.deleteConsensusData)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec restore failed")

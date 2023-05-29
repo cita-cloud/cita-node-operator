@@ -259,6 +259,9 @@ func (r *RecoverReconciler) jobForRecover(ctx context.Context, recoverCR *citacl
 		args = append(args, "--md5", recoverCR.Spec.Decompress.Md5)
 		args = append(args, "--input", recoverCR.Spec.Decompress.File)
 	}
+	if recoverCR.Spec.DeleteConsensusData {
+		args = append(args, "--delete-consensus-data")
+	}
 
 	job := &v1.Job{
 		ObjectMeta: metav1.ObjectMeta{
