@@ -456,7 +456,7 @@ func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFa
 				"--node", bhf.Spec.Node,
 				"--crypto", crypto,
 				"--consensus", consensus,
-				"--is-clear",
+				"--delete-consensus-data",
 			}
 		} else {
 			return []string{
@@ -480,7 +480,7 @@ func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFa
 				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 				"--node", bhf.Spec.Node,
 				"--consensus", consensus,
-				"--is-clear",
+				"--delete-consensus-data",
 			}
 		} else {
 			return []string{

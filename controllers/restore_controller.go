@@ -477,7 +477,7 @@ func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, c
 				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
 				"--crypto", crypto,
 				"--consensus", consensus,
-				"--is-clear",
+				"--delete-consensus-data",
 			}
 		} else {
 			return []string{
@@ -501,7 +501,7 @@ func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, c
 				"--deploy-method", string(restore.Spec.DeployMethod),
 				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
 				"--consensus", consensus,
-				"--is-clear",
+				"--delete-consensus-data",
 			}
 		} else {
 			return []string{
