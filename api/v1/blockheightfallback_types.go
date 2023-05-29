@@ -43,6 +43,8 @@ type BlockHeightFallbackSpec struct {
 	TTLSecondsAfterFinished int64 `json:"ttlSecondsAfterFinished,omitempty"`
 	// PodAffinityFlag weather or not the job's affinity with chain node's pod. Notice: helm chain must be false
 	PodAffinityFlag bool `json:"podAffinityFlag,omitempty"`
+	// DeleteConsensusData weather or not delete consensus data when restore
+	DeleteConsensusData bool `json:"deleteConsensusData,omitempty"`
 }
 
 // BlockHeightFallbackStatus defines the observed state of BlockHeightFallback

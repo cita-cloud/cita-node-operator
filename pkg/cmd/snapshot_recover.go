@@ -30,13 +30,14 @@ import (
 )
 
 type SnapshotRecover struct {
-	namespace    string
-	chain        string
-	node         string
-	deployMethod string
-	blockHeight  int64
-	crypto       string
-	consensus    string
+	namespace           string
+	chain               string
+	node                string
+	deployMethod        string
+	blockHeight         int64
+	crypto              string
+	consensus           string
+	deleteConsensusData bool
 }
 
 var snapshotRecover = SnapshotRecover{}
@@ -54,6 +55,7 @@ func NewSnapshotRecover() *cobra.Command {
 	cc.Flags().Int64VarP(&snapshotRecover.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
 	cc.Flags().StringVarP(&snapshotRecover.crypto, "crypto", "", "sm", "The node of crypto. [sm/eth]")
 	cc.Flags().StringVarP(&snapshotRecover.consensus, "consensus", "", "bft", "The node of consensus. [bft/raft]")
+	cc.Flags().BoolVarP(&snapshotRecover.deleteConsensusData, "delete-consensus-data", "", false, "Delete consensus data or not.")
 	return cc
 }
 
@@ -90,7 +92,11 @@ func snapshotRecoverFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.SnapshotRecover(ctx, snapshotRecover.blockHeight, snapshotRecover.crypto, snapshotRecover.consensus)
+		return node.SnapshotRecover(ctx,
+			snapshotRecover.blockHeight,
+			snapshotRecover.crypto,
+			snapshotRecover.consensus,
+			snapshotRecover.deleteConsensusData)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec snapshot recover failed")

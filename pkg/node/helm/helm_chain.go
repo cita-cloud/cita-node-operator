@@ -48,7 +48,7 @@ type helmNode struct {
 	replicas  *int32
 }
 
-func (h *helmNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (h *helmNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -142,7 +142,7 @@ func (h *helmNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	err := h.Stop(ctx)
 	if err != nil {
 		return err
@@ -152,7 +152,7 @@ func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, cons
 		return err
 	}
 	err = h.behavior.Fallback(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, h.name),
-		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, h.name), crypto, consensus)
+		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, h.name), crypto, consensus, deleteConsensusData)
 	if err != nil {
 		return err
 	}

@@ -467,25 +467,52 @@ func (r *RestoreReconciler) buildArgsForFile(restore *citacloudv1.Restore) []str
 
 func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, crypto, consensus string) []string {
 	if crypto != "" {
-		return []string{
-			"snapshot-recover",
-			"--namespace", restore.Namespace,
-			"--chain", restore.Spec.Chain,
-			"--node", restore.Spec.Node,
-			"--deploy-method", string(restore.Spec.DeployMethod),
-			"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
-			"--crypto", crypto,
-			"--consensus", consensus,
+		if restore.Spec.DeleteConsensusData {
+			return []string{
+				"snapshot-recover",
+				"--namespace", restore.Namespace,
+				"--chain", restore.Spec.Chain,
+				"--node", restore.Spec.Node,
+				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+				"--crypto", crypto,
+				"--consensus", consensus,
+				"--is-clear",
+			}
+		} else {
+			return []string{
+				"snapshot-recover",
+				"--namespace", restore.Namespace,
+				"--chain", restore.Spec.Chain,
+				"--node", restore.Spec.Node,
+				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+				"--crypto", crypto,
+				"--consensus", consensus,
+			}
 		}
 	} else {
-		return []string{
-			"snapshot-recover",
-			"--namespace", restore.Namespace,
-			"--chain", restore.Spec.Chain,
-			"--node", restore.Spec.Node,
-			"--deploy-method", string(restore.Spec.DeployMethod),
-			"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
-			"--consensus", consensus,
+		if restore.Spec.DeleteConsensusData {
+			return []string{
+				"snapshot-recover",
+				"--namespace", restore.Namespace,
+				"--chain", restore.Spec.Chain,
+				"--node", restore.Spec.Node,
+				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+				"--consensus", consensus,
+				"--is-clear",
+			}
+		} else {
+			return []string{
+				"snapshot-recover",
+				"--namespace", restore.Namespace,
+				"--chain", restore.Spec.Chain,
+				"--node", restore.Spec.Node,
+				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
+				"--consensus", consensus,
+			}
 		}
 	}
 }

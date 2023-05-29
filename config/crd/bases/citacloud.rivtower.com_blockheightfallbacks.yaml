@@ -45,6 +45,10 @@ spec:
               chain:
                 description: Chain
                 type: string
+              deleteConsensusData:
+                description: DeleteConsensusData weather or not delete consensus data
+                  when restore
+                type: boolean
               deployMethod:
                 description: DeployMethod
                 type: string

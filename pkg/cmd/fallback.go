@@ -34,13 +34,14 @@ var (
 )
 
 type Fallback struct {
-	namespace    string
-	node         string
-	chain        string
-	deployMethod string
-	blockHeight  int64
-	crypto       string
-	consensus    string
+	namespace           string
+	node                string
+	chain               string
+	deployMethod        string
+	blockHeight         int64
+	crypto              string
+	consensus           string
+	deleteConsensusData bool
 }
 
 var fallback = Fallback{}
@@ -58,6 +59,7 @@ func NewFallbackCommand() *cobra.Command {
 	cc.Flags().Int64VarP(&fallback.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
 	cc.Flags().StringVarP(&fallback.crypto, "crypto", "", "sm", "The node of crypto. [sm/eth]")
 	cc.Flags().StringVarP(&fallback.consensus, "consensus", "", "bft", "The node of consensus. [bft/raft]")
+	cc.Flags().BoolVarP(&fallback.deleteConsensusData, "delete-consensus-data", "", false, "Delete consensus data or not.")
 	return cc
 }
 
@@ -90,7 +92,7 @@ func fallBackFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Fallback(ctx, fallback.blockHeight, fallback.crypto, fallback.consensus)
+		return node.Fallback(ctx, fallback.blockHeight, fallback.crypto, fallback.consensus, fallback.deleteConsensusData)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec block height fallback failed")
