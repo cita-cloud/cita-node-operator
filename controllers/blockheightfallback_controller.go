@@ -446,25 +446,52 @@ func (r *BlockHeightFallbackReconciler) getCloudConfigVolumes(ctx context.Contex
 
 func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFallback, crypto, consensus string) []string {
 	if crypto != "" {
-		return []string{
-			"fallback",
-			"--namespace", bhf.Namespace,
-			"--chain", bhf.Spec.Chain,
-			"--deploy-method", string(bhf.Spec.DeployMethod),
-			"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
-			"--node", bhf.Spec.Node,
-			"--crypto", crypto,
-			"--consensus", consensus,
+		if bhf.Spec.DeleteConsensusData {
+			return []string{
+				"fallback",
+				"--namespace", bhf.Namespace,
+				"--chain", bhf.Spec.Chain,
+				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+				"--node", bhf.Spec.Node,
+				"--crypto", crypto,
+				"--consensus", consensus,
+				"--delete-consensus-data",
+			}
+		} else {
+			return []string{
+				"fallback",
+				"--namespace", bhf.Namespace,
+				"--chain", bhf.Spec.Chain,
+				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+				"--node", bhf.Spec.Node,
+				"--crypto", crypto,
+				"--consensus", consensus,
+			}
 		}
 	} else {
-		return []string{
-			"fallback",
-			"--namespace", bhf.Namespace,
-			"--chain", bhf.Spec.Chain,
-			"--deploy-method", string(bhf.Spec.DeployMethod),
-			"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
-			"--node", bhf.Spec.Node,
-			"--consensus", consensus,
+		if bhf.Spec.DeleteConsensusData {
+			return []string{
+				"fallback",
+				"--namespace", bhf.Namespace,
+				"--chain", bhf.Spec.Chain,
+				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+				"--node", bhf.Spec.Node,
+				"--consensus", consensus,
+				"--delete-consensus-data",
+			}
+		} else {
+			return []string{
+				"fallback",
+				"--namespace", bhf.Namespace,
+				"--chain", bhf.Spec.Chain,
+				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
+				"--node", bhf.Spec.Node,
+				"--consensus", consensus,
+			}
 		}
 	}
 }

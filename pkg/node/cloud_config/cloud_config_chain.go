@@ -124,7 +124,8 @@ func (c *cloudConfigNode) Restore(ctx context.Context,
 	action node.Action,
 	sourcePath string,
 	destPath string,
-	options *common.DecompressOptions) error {
+	options *common.DecompressOptions,
+	deleteConsensusData bool) error {
 	if action == node.StopAndStart {
 		if err := c.Stop(ctx); err != nil {
 			return err
@@ -133,7 +134,7 @@ func (c *cloudConfigNode) Restore(ctx context.Context,
 			return err
 		}
 	}
-	if err := c.behavior.Restore(sourcePath, destPath, options); err != nil {
+	if err := c.behavior.Restore(sourcePath, destPath, options, deleteConsensusData); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -193,7 +194,7 @@ func (c *cloudConfigNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (c *cloudConfigNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (c *cloudConfigNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	err := c.Stop(ctx)
 	if err != nil {
 		return err
@@ -202,7 +203,12 @@ func (c *cloudConfigNode) Fallback(ctx context.Context, blockHeight int64, crypt
 	if err != nil {
 		return err
 	}
-	err = c.behavior.Fallback(blockHeight, citacloudv1.VolumeMountPath, citacloudv1.ConfigMountPath, crypto, consensus)
+	err = c.behavior.Fallback(blockHeight,
+		citacloudv1.VolumeMountPath,
+		citacloudv1.ConfigMountPath,
+		crypto,
+		consensus,
+		deleteConsensusData)
 	if err != nil {
 		return err
 	}
@@ -240,7 +246,7 @@ func (c *cloudConfigNode) Snapshot(ctx context.Context, blockHeight int64, crypt
 	return err
 }
 
-func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	err := c.Stop(ctx)
 	if err != nil {
 		return err
@@ -249,7 +255,13 @@ func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64
 	if err != nil {
 		return err
 	}
-	err = c.behavior.SnapshotRecover(blockHeight, citacloudv1.RestoreDestVolumePath, citacloudv1.ConfigMountPath, citacloudv1.RestoreSourceVolumePath, crypto, consensus)
+	err = c.behavior.SnapshotRecover(blockHeight,
+		citacloudv1.RestoreDestVolumePath,
+		citacloudv1.ConfigMountPath,
+		citacloudv1.RestoreSourceVolumePath,
+		crypto,
+		consensus,
+		deleteConsensusData)
 	if err != nil {
 		return err
 	}

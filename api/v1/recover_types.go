@@ -47,6 +47,8 @@ type RecoverSpec struct {
 	PodAffinityFlag bool `json:"podAffinityFlag,omitempty"`
 	// Decompress
 	Decompress *Decompress `json:"decompress,omitempty"`
+	// DeleteConsensusData weather or not delete consensus data when restore
+	DeleteConsensusData bool `json:"deleteConsensusData,omitempty"`
 }
 
 // RecoverStatus defines the observed state of Recover

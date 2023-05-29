@@ -57,6 +57,10 @@ spec:
                   md5:
                     type: string
                 type: object
+              deleteConsensusData:
+                description: DeleteConsensusData weather or not delete consensus data
+                  when restore
+                type: boolean
               deployMethod:
                 description: DeployMethod
                 type: string

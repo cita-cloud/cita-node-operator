@@ -48,7 +48,7 @@ type pyNode struct {
 	chain     string
 }
 
-func (p *pyNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (p *pyNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -91,7 +91,8 @@ func (p *pyNode) Restore(ctx context.Context,
 	action node.Action,
 	sourcePath string,
 	destPath string,
-	options *common.DecompressOptions) error {
+	options *common.DecompressOptions,
+	deleteConsensusData bool) error {
 	if action == node.StopAndStart {
 		if err := p.Stop(ctx); err != nil {
 			return err
@@ -100,7 +101,7 @@ func (p *pyNode) Restore(ctx context.Context,
 			return err
 		}
 	}
-	if err := p.behavior.Restore(sourcePath, destPath, options); err != nil {
+	if err := p.behavior.Restore(sourcePath, destPath, options, deleteConsensusData); err != nil {
 		return err
 	}
 	if action == node.StopAndStart {
@@ -233,7 +234,7 @@ func (p *pyNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (p *pyNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (p *pyNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	err := p.Stop(ctx)
 	if err != nil {
 		return err
@@ -243,7 +244,7 @@ func (p *pyNode) Fallback(ctx context.Context, blockHeight int64, crypto, consen
 		return err
 	}
 	err = p.behavior.Fallback(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name),
-		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name), crypto, consensus)
+		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name), crypto, consensus, deleteConsensusData)
 	if err != nil {
 		return err
 	}

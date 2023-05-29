@@ -19,6 +19,7 @@ package behavior
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -43,10 +44,10 @@ func newResult(size int64, md5 string) *Result {
 
 type Interface interface {
 	Backup(sourcePath string, destPath string, options *common.CompressOptions) (*Result, error)
-	Restore(sourcePath string, destPath string, options *common.DecompressOptions) error
-	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error
+	Restore(sourcePath string, destPath string, options *common.DecompressOptions, deleteConsensusData bool) error
+	Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string, deleteConsensusData bool) error
 	Snapshot(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) (int64, error)
-	SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error
+	SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string, deleteConsensusData bool) error
 	ChangeOwner(uid, gid int64, path string) error
 }
 
@@ -128,12 +129,12 @@ func (receiver Behavior) calculateSize(path string) (int64, error) {
 	return usage, nil
 }
 
-func (receiver Behavior) Restore(sourcePath string, destPath string, options *common.DecompressOptions) error {
-	err := receiver.restore(sourcePath, destPath, options)
+func (receiver Behavior) Restore(sourcePath string, destPath string, options *common.DecompressOptions, deleteConsensusData bool) error {
+	err := receiver.restore(sourcePath, destPath, options, deleteConsensusData)
 	return err
 }
 
-func (receiver Behavior) restore(sourcePath string, destPath string, options *common.DecompressOptions) error {
+func (receiver Behavior) restore(sourcePath string, destPath string, options *common.DecompressOptions, deleteConsensusData bool) error {
 	if options.Enable {
 		if options.Md5 != "" {
 			md5, err := common.CalcFileMD5(filepath.Join(sourcePath, options.Input))
@@ -150,6 +151,14 @@ func (receiver Behavior) restore(sourcePath string, destPath string, options *co
 			receiver.logger.Error(err, "clean dest dir failed")
 			return err
 		}
+		if deleteConsensusData {
+			err = removeConsensusData(destPath)
+			if err != nil {
+				receiver.logger.Error(err, "remove consensus data failed")
+				return err
+			}
+			receiver.logger.Info("remove consensus data succeed")
+		}
 		// unpack
 		err = common.UnArchive(context.Background(), filepath.Join(sourcePath, options.Input), destPath)
 		if err != nil {
@@ -161,6 +170,14 @@ func (receiver Behavior) restore(sourcePath string, destPath string, options *co
 			receiver.logger.Error(err, "clean dest dir failed")
 			return err
 		}
+		if deleteConsensusData {
+			err = removeConsensusData(destPath)
+			if err != nil {
+				receiver.logger.Error(err, "remove consensus data failed")
+				return err
+			}
+			receiver.logger.Info("remove consensus data succeed")
+		}
 		cmd := fmt.Sprintf("cp -af %s/chain_data %s/data %s", sourcePath, sourcePath, destPath)
 		receiver.logger.Info(cmd)
 		err = receiver.execer.Command("/bin/sh", "-c", cmd).Run()
@@ -170,6 +187,37 @@ func (receiver Behavior) restore(sourcePath string, destPath string, options *co
 		}
 	}
 	receiver.logger.Info("restore file completed")
+	return nil
+}
+
+const (
+	RaftConsensusDir     string = "raft-data-dir"
+	OverLordConsensusDir string = "overlord_wal"
+)
+
+func removeConsensusData(parentDir string) error {
+	_, err := os.Stat(filepath.Join(parentDir, RaftConsensusDir))
+	if err == nil {
+		// exist, delete it
+		err := os.RemoveAll(filepath.Join(parentDir, RaftConsensusDir))
+		if err != nil {
+			return err
+		}
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
+	_, err = os.Stat(filepath.Join(parentDir, OverLordConsensusDir))
+	if err == nil {
+		// exist, delete it
+		err := os.RemoveAll(filepath.Join(parentDir, OverLordConsensusDir))
+		if err != nil {
+			return err
+		}
+	}
+	if !os.IsNotExist(err) {
+		return err
+	}
 	return nil
 }
 
@@ -192,16 +240,12 @@ func (receiver Behavior) Snapshot(blockHeight int64, nodeRoot string, configPath
 	return snapshotSize, nil
 }
 
-func (receiver Behavior) SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string) error {
+func (receiver Behavior) SnapshotRecover(blockHeight int64, nodeRoot string, configPath string, backupPath string, crypto string, consensus string, deleteConsensusData bool) error {
 	receiver.logger.Info(
-		fmt.Sprintf("exec snapshot recover: [height: %d, node-root: %s, config-path: %s, backup-path: %s, crypto: %s, consensus: %s]...",
-			blockHeight, nodeRoot, configPath, backupPath, crypto, consensus))
-	err := receiver.execer.Command("cloud-op", "state-recover", fmt.Sprintf("%d", blockHeight),
-		"--node-root", nodeRoot,
-		"--config-path", fmt.Sprintf("%s/config.toml", configPath),
-		"--backup-path", backupPath,
-		"--crypto", crypto,
-		"--consensus", consensus).Run()
+		fmt.Sprintf("exec snapshot recover: [height: %d, node-root: %s, config-path: %s, backup-path: %s, crypto: %s, consensus: %s, deleteConsensusData: %t]...",
+			blockHeight, nodeRoot, configPath, backupPath, crypto, consensus, deleteConsensusData))
+	args := buildSnapshotRecoverArgs(blockHeight, nodeRoot, configPath, backupPath, crypto, consensus, deleteConsensusData)
+	err := receiver.execer.Command("cloud-op", args...).Run()
 	if err != nil {
 		receiver.logger.Error(err, "exec snapshot recover failed")
 		return err
@@ -210,13 +254,45 @@ func (receiver Behavior) SnapshotRecover(blockHeight int64, nodeRoot string, con
 	return nil
 }
 
-func (receiver Behavior) Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string) error {
-	receiver.logger.Info(fmt.Sprintf("exec block height fallback: [height: %d]...", blockHeight))
-	err := receiver.execer.Command("cloud-op", "recover", fmt.Sprintf("%d", blockHeight),
+func buildSnapshotRecoverArgs(blockHeight int64,
+	nodeRoot string, configPath string, backupPath string, crypto string, consensus string,
+	deleteConsensusData bool) []string {
+	args := []string{
+		"state-recover",
+		fmt.Sprintf("%d", blockHeight),
+		"--node-root", fmt.Sprintf("%s", nodeRoot),
+		"--config-path", fmt.Sprintf("%s/config.toml", configPath),
+		"--backup-path", backupPath,
+		"--crypto", crypto,
+		"--consensus", consensus,
+	}
+	if deleteConsensusData {
+		args = append(args, "--is-clear")
+	}
+	return args
+}
+
+func buildFallbackArgs(blockHeight int64,
+	nodeRoot string, configPath string, crypto string, consensus string,
+	deleteConsensusData bool) []string {
+	args := []string{
+		"recover",
+		fmt.Sprintf("%d", blockHeight),
 		"--node-root", fmt.Sprintf("%s", nodeRoot),
 		"--config-path", fmt.Sprintf("%s/config.toml", configPath),
 		"--crypto", crypto,
-		"--consensus", consensus).Run()
+		"--consensus", consensus,
+	}
+	if deleteConsensusData {
+		args = append(args, "--is-clear")
+	}
+	return args
+}
+
+func (receiver Behavior) Fallback(blockHeight int64, nodeRoot string, configPath string, crypto string, consensus string, deleteConsensusData bool) error {
+	receiver.logger.Info(fmt.Sprintf("exec block height fallback: [height: %d]...", blockHeight))
+	args := buildFallbackArgs(blockHeight, nodeRoot, configPath, crypto, consensus, deleteConsensusData)
+	err := receiver.execer.Command("cloud-op", args...).Run()
 	if err != nil {
 		receiver.logger.Error(err, "exec block height fallback failed")
 		return err

@@ -60,7 +60,7 @@ var _ = Describe("Fallback for helm node", func() {
 
 			chain, err := nodepkg.CreateNode(nodepkg.Helm, ChainNamespace, NodeName, k8sClient, ChainName, &fexec)
 			Expect(err).NotTo(HaveOccurred())
-			err = chain.Fallback(ctx, 100, "sm", "bft")
+			err = chain.Fallback(ctx, 100, "sm", "bft", true)
 			Expect(err).NotTo(HaveOccurred())
 		})
 	})

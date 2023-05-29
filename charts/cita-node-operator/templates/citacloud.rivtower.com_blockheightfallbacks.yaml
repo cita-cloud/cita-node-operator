@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.9.2
   creationTimestamp: null
   name: blockheightfallbacks.citacloud.rivtower.com
 spec:
@@ -45,6 +45,10 @@ spec:
               chain:
                 description: Chain
                 type: string
+              deleteConsensusData:
+                description: DeleteConsensusData weather or not delete consensus data
+                  when restore
+                type: boolean
               deployMethod:
                 description: DeployMethod
                 type: string
@@ -95,9 +99,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
