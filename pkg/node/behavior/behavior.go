@@ -191,7 +191,7 @@ func (receiver Behavior) restore(sourcePath string, destPath string, options *co
 }
 
 const (
-	RaftConsensusDir     string = "raft_data_dir"
+	RaftConsensusDir     string = "raft-data-dir"
 	OverLordConsensusDir string = "overlord_wal"
 )
 
