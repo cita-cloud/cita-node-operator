@@ -1,6 +1,6 @@
 # cita-node-operator
 
-![Version: 0.0.6](https://img.shields.io/badge/Version-0.0.6-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.6](https://img.shields.io/badge/AppVersion-0.0.6-informational?style=flat-square)
+![Version: 0.0.7](https://img.shields.io/badge/Version-0.0.7-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.0.7](https://img.shields.io/badge/AppVersion-0.0.7-informational?style=flat-square)
 
 A Helm chart for Cita-Cloud Node Operator
 
@@ -23,7 +23,7 @@ Kubernetes: `>=1.18.0-0`
 | image.pullPolicy | string | `"IfNotPresent"` | You can specify the image pull policy. |
 | image.registry | string | `"docker.io"` | You can specify the image registry. |
 | image.repository | string | `"citacloud"` | You can specify the image repository. |
-| image.tag | string | `"v0.0.6"` | You can specify the image tag. |
+| image.tag | string | `"v0.0.7"` | You can specify the image tag. |
 | replicaCount | int | `1` | replica count |
 | resources.limits.cpu | string | `"500m"` | cpu limit |
 | resources.limits.memory | string | `"128Mi"` | memory limit |
