@@ -2,14 +2,14 @@ apiVersion: citacloud.rivtower.com/v1
 kind: Restore
 metadata:
   name: restore-sample-cloud-config
-  namespace: zhujq
+  namespace: default
 spec:
   chain: test-chain-zenoh-overlord
   node: test-chain-zenoh-overlord-node0
   deployMethod: cloud-config
   backup: backup-sample-cloud-config
   pullPolicy: Always
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:wjj
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   podAffinityFlag: true
   ttlSecondsAfterFinished: 300
   deleteConsensusData: true
