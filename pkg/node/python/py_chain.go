@@ -48,7 +48,7 @@ type pyNode struct {
 	chain     string
 }
 
-func (p *pyNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
+func (p *pyNode) SnapshotRecover(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -234,35 +234,36 @@ func (p *pyNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (p *pyNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
-	err := p.Stop(ctx)
-	if err != nil {
-		return err
+func (p *pyNode) Fallback(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
+	if action == node.StopAndStart {
+		if err := p.Stop(ctx); err != nil {
+			return err
+		}
+		if err := p.CheckStopped(ctx); err != nil {
+			return err
+		}
 	}
-	err = p.CheckStopped(ctx)
-	if err != nil {
-		return err
-	}
-	err = p.behavior.Fallback(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name),
+	err := p.behavior.Fallback(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name),
 		fmt.Sprintf("%s/%s", citacloudv1.VolumeMountPath, p.name), crypto, consensus, deleteConsensusData)
 	if err != nil {
 		return err
 	}
-	err = p.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := p.Start(ctx); err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
-func (p *pyNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error {
-	err := p.Stop(ctx)
-	if err != nil {
-		return err
-	}
-	err = p.CheckStopped(ctx)
-	if err != nil {
-		return err
+func (p *pyNode) Snapshot(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string) error {
+	if action == node.StopAndStart {
+		if err := p.Stop(ctx); err != nil {
+			return err
+		}
+		if err := p.CheckStopped(ctx); err != nil {
+			return err
+		}
 	}
 	snapshotSize, err := p.behavior.Snapshot(blockHeight, fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name),
 		fmt.Sprintf("%s/%s", citacloudv1.BackupSourceVolumePath, p.name), citacloudv1.BackupDestVolumePath, crypto, consensus)
@@ -276,11 +277,12 @@ func (p *pyNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consen
 		return err
 	}
 
-	err = p.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := p.Start(ctx); err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
 func (p *pyNode) Start(ctx context.Context) error {

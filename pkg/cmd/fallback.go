@@ -18,6 +18,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"github.com/cita-cloud/cita-node-operator/pkg/common"
 	nodepkg "github.com/cita-cloud/cita-node-operator/pkg/node"
 	"k8s.io/utils/exec"
@@ -38,6 +39,7 @@ type Fallback struct {
 	node                string
 	chain               string
 	deployMethod        string
+	action              string
 	blockHeight         int64
 	crypto              string
 	consensus           string
@@ -56,6 +58,7 @@ func NewFallbackCommand() *cobra.Command {
 	cc.Flags().StringVarP(&fallback.node, "node", "", "", "The node that you want to fallback.")
 	cc.Flags().StringVarP(&fallback.chain, "chain", "c", "test-chain", "The node name this node belongs to.")
 	cc.Flags().StringVarP(&fallback.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
+	cc.Flags().StringVarP(&fallback.action, "action", "a", "StopAndStart", "The action when node restore.")
 	cc.Flags().Int64VarP(&fallback.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
 	cc.Flags().StringVarP(&fallback.crypto, "crypto", "", "sm", "The node of crypto. [sm/eth]")
 	cc.Flags().StringVarP(&fallback.consensus, "consensus", "", "bft", "The node of consensus. [bft/raft]")
@@ -85,6 +88,18 @@ func fallBackFunc(cmd *cobra.Command, args []string) {
 	case string(nodepkg.CloudConfig):
 		dm = nodepkg.CloudConfig
 	}
+
+	var action nodepkg.Action
+	switch fallback.action {
+	case string(nodepkg.StopAndStart):
+		action = nodepkg.StopAndStart
+	case string(nodepkg.Direct):
+		action = nodepkg.Direct
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for action"), "invalid parameter for action")
+		os.Exit(1)
+	}
+
 	node, err := nodepkg.CreateNode(dm, fallback.namespace, fallback.node, k8sClient, fallback.chain, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to init node")
@@ -92,7 +107,7 @@ func fallBackFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Fallback(ctx, fallback.blockHeight, fallback.crypto, fallback.consensus, fallback.deleteConsensusData)
+		return node.Fallback(ctx, action, fallback.blockHeight, fallback.crypto, fallback.consensus, fallback.deleteConsensusData)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec block height fallback failed")

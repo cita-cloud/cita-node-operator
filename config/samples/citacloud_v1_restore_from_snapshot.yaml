@@ -11,3 +11,6 @@ spec:
   pullPolicy: Always
   image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
   podAffinityFlag: true
+  ttlSecondsAfterFinished: 300
+  deleteConsensusData: true
+  action: Direct

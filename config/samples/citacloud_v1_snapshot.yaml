@@ -8,7 +8,9 @@ spec:
   node: test-chain-zenoh-bft-node0
   blockHeight: 50
   deployMethod: cloud-config
-  storageClass: csi-nas
+  action: Direct
+  storageClass: nfs-client
   pullPolicy: Always
   image: registry.devops.rivtower.com/cita-cloud/cita-node-job:snapshot
   podAffinityFlag: true
+  ttlSecondsAfterFinished: 300

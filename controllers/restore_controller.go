@@ -414,6 +414,24 @@ func (r *RestoreReconciler) jobForSnapshotRecover(ctx context.Context, restore *
 								"/cita-node-cli",
 							},
 							Args: r.buildArgsForSnapshot(restore, crypto, consensus),
+							Env: []corev1.EnvVar{
+								{
+									Name: POD_NAME_ENV,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.name",
+										},
+									},
+								},
+								{
+									Name: POD_NAMESPACE_ENV,
+									ValueFrom: &corev1.EnvVarSource{
+										FieldRef: &corev1.ObjectFieldSelector{
+											FieldPath: "metadata.namespace",
+										},
+									},
+								},
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      citacloudv1.RestoreSourceVolumeName,
@@ -474,6 +492,7 @@ func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, c
 				"--chain", restore.Spec.Chain,
 				"--node", restore.Spec.Node,
 				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--action", string(restore.Spec.Action),
 				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
 				"--crypto", crypto,
 				"--consensus", consensus,
@@ -486,6 +505,7 @@ func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, c
 				"--chain", restore.Spec.Chain,
 				"--node", restore.Spec.Node,
 				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--action", string(restore.Spec.Action),
 				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
 				"--crypto", crypto,
 				"--consensus", consensus,
@@ -499,6 +519,7 @@ func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, c
 				"--chain", restore.Spec.Chain,
 				"--node", restore.Spec.Node,
 				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--action", string(restore.Spec.Action),
 				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
 				"--consensus", consensus,
 				"--delete-consensus-data",
@@ -510,6 +531,7 @@ func (r *RestoreReconciler) buildArgsForSnapshot(restore *citacloudv1.Restore, c
 				"--chain", restore.Spec.Chain,
 				"--node", restore.Spec.Node,
 				"--deploy-method", string(restore.Spec.DeployMethod),
+				"--action", string(restore.Spec.Action),
 				"--block-height", strconv.FormatInt(r.snapshot.Spec.BlockHeight, 10),
 				"--consensus", consensus,
 			}

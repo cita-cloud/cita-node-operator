@@ -376,6 +376,10 @@ func filterCryptoAndConsensus(containers []corev1.Container) (string, string) {
 
 func (r *BlockHeightFallbackReconciler) setDefaultSpec(bhf *citacloudv1.BlockHeightFallback) bool {
 	updateFlag := false
+	if bhf.Spec.Action == "" {
+		bhf.Spec.Action = nodepkg.StopAndStart
+		updateFlag = true
+	}
 	if bhf.Spec.Image == "" {
 		bhf.Spec.Image = citacloudv1.DefaultImage
 		updateFlag = true
@@ -452,6 +456,7 @@ func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFa
 				"--namespace", bhf.Namespace,
 				"--chain", bhf.Spec.Chain,
 				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--action", string(bhf.Spec.Action),
 				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 				"--node", bhf.Spec.Node,
 				"--crypto", crypto,
@@ -464,6 +469,7 @@ func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFa
 				"--namespace", bhf.Namespace,
 				"--chain", bhf.Spec.Chain,
 				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--action", string(bhf.Spec.Action),
 				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 				"--node", bhf.Spec.Node,
 				"--crypto", crypto,
@@ -477,6 +483,7 @@ func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFa
 				"--namespace", bhf.Namespace,
 				"--chain", bhf.Spec.Chain,
 				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--action", string(bhf.Spec.Action),
 				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 				"--node", bhf.Spec.Node,
 				"--consensus", consensus,
@@ -488,6 +495,7 @@ func (r *BlockHeightFallbackReconciler) buildArgs(bhf *citacloudv1.BlockHeightFa
 				"--namespace", bhf.Namespace,
 				"--chain", bhf.Spec.Chain,
 				"--deploy-method", string(bhf.Spec.DeployMethod),
+				"--action", string(bhf.Spec.Action),
 				"--block-height", strconv.FormatInt(bhf.Spec.BlockHeight, 10),
 				"--node", bhf.Spec.Node,
 				"--consensus", consensus,

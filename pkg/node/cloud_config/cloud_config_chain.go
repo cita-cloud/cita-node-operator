@@ -194,16 +194,16 @@ func (c *cloudConfigNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (c *cloudConfigNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
-	err := c.Stop(ctx)
-	if err != nil {
-		return err
+func (c *cloudConfigNode) Fallback(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
+	if action == node.StopAndStart {
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+		if err := c.CheckStopped(ctx); err != nil {
+			return err
+		}
 	}
-	err = c.CheckStopped(ctx)
-	if err != nil {
-		return err
-	}
-	err = c.behavior.Fallback(blockHeight,
+	err := c.behavior.Fallback(blockHeight,
 		citacloudv1.VolumeMountPath,
 		citacloudv1.ConfigMountPath,
 		crypto,
@@ -212,21 +212,22 @@ func (c *cloudConfigNode) Fallback(ctx context.Context, blockHeight int64, crypt
 	if err != nil {
 		return err
 	}
-	err = c.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := c.Start(ctx); err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
-func (c *cloudConfigNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error {
-	err := c.Stop(ctx)
-	if err != nil {
-		return err
-	}
-	err = c.CheckStopped(ctx)
-	if err != nil {
-		return err
+func (c *cloudConfigNode) Snapshot(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string) error {
+	if action == node.StopAndStart {
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+		if err := c.CheckStopped(ctx); err != nil {
+			return err
+		}
 	}
 	snapshotSize, err := c.behavior.Snapshot(blockHeight, citacloudv1.BackupSourceVolumePath, citacloudv1.ConfigMountPath, citacloudv1.BackupDestVolumePath, crypto, consensus)
 	if err != nil {
@@ -239,23 +240,24 @@ func (c *cloudConfigNode) Snapshot(ctx context.Context, blockHeight int64, crypt
 		return err
 	}
 
-	err = c.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := c.Start(ctx); err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
-func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
-	err := c.Stop(ctx)
-	if err != nil {
-		return err
+func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
+	if action == node.StopAndStart {
+		if err := c.Stop(ctx); err != nil {
+			return err
+		}
+		if err := c.CheckStopped(ctx); err != nil {
+			return err
+		}
 	}
-	err = c.CheckStopped(ctx)
-	if err != nil {
-		return err
-	}
-	err = c.behavior.SnapshotRecover(blockHeight,
+	err := c.behavior.SnapshotRecover(blockHeight,
 		citacloudv1.RestoreDestVolumePath,
 		citacloudv1.ConfigMountPath,
 		citacloudv1.RestoreSourceVolumePath,
@@ -269,11 +271,12 @@ func (c *cloudConfigNode) SnapshotRecover(ctx context.Context, blockHeight int64
 	if err != nil {
 		return err
 	}
-	err = c.Start(ctx)
-	if err != nil {
-		return err
+	if action == node.StopAndStart {
+		if err := c.Start(ctx); err != nil {
+			return err
+		}
 	}
-	return err
+	return nil
 }
 
 func (c *cloudConfigNode) Start(ctx context.Context) error {
