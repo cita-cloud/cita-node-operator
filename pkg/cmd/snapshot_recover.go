@@ -34,6 +34,7 @@ type SnapshotRecover struct {
 	chain               string
 	node                string
 	deployMethod        string
+	action              string
 	blockHeight         int64
 	crypto              string
 	consensus           string
@@ -52,6 +53,7 @@ func NewSnapshotRecover() *cobra.Command {
 	cc.Flags().StringVarP(&snapshotRecover.chain, "chain", "c", "test-node", "The node name this node belongs to.")
 	cc.Flags().StringVarP(&snapshotRecover.node, "node", "", "", "The node that you want to restore.")
 	cc.Flags().StringVarP(&snapshotRecover.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
+	cc.Flags().StringVarP(&snapshotRecover.action, "action", "a", "StopAndStart", "The action when node restore.")
 	cc.Flags().Int64VarP(&snapshotRecover.blockHeight, "block-height", "b", 999999999, "The block height you want to recover.")
 	cc.Flags().StringVarP(&snapshotRecover.crypto, "crypto", "", "sm", "The node of crypto. [sm/eth]")
 	cc.Flags().StringVarP(&snapshotRecover.consensus, "consensus", "", "bft", "The node of consensus. [bft/raft]")
@@ -85,6 +87,17 @@ func snapshotRecoverFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	var action nodepkg.Action
+	switch snapshotRecover.action {
+	case string(nodepkg.StopAndStart):
+		action = nodepkg.StopAndStart
+	case string(nodepkg.Direct):
+		action = nodepkg.Direct
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for action"), "invalid parameter for action")
+		os.Exit(1)
+	}
+
 	node, err := nodepkg.CreateNode(dm, snapshotRecover.namespace, snapshotRecover.node, k8sClient, snapshotRecover.chain, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to init node")
@@ -93,6 +106,7 @@ func snapshotRecoverFunc(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
 		return node.SnapshotRecover(ctx,
+			action,
 			snapshotRecover.blockHeight,
 			snapshotRecover.crypto,
 			snapshotRecover.consensus,

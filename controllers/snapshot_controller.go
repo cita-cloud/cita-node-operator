@@ -183,6 +183,10 @@ func (r *SnapshotReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 func (r *SnapshotReconciler) setDefaultSpec(snapshot *citacloudv1.Snapshot) bool {
 	updateFlag := false
+	if snapshot.Spec.Action == "" {
+		snapshot.Spec.Action = chainpkg.StopAndStart
+		updateFlag = true
+	}
 	if snapshot.Spec.Image == "" {
 		snapshot.Spec.Image = citacloudv1.DefaultImage
 		updateFlag = true
@@ -424,6 +428,7 @@ func (r *SnapshotReconciler) buildArgs(snapshot *citacloudv1.Snapshot, crypto, c
 			"--chain", snapshot.Spec.Chain,
 			"--node", snapshot.Spec.Node,
 			"--deploy-method", string(snapshot.Spec.DeployMethod),
+			"--action", string(snapshot.Spec.Action),
 			"--block-height", strconv.FormatInt(snapshot.Spec.BlockHeight, 10),
 			"--crypto", crypto,
 			"--consensus", consensus,
@@ -435,6 +440,7 @@ func (r *SnapshotReconciler) buildArgs(snapshot *citacloudv1.Snapshot, crypto, c
 			"--chain", snapshot.Spec.Chain,
 			"--node", snapshot.Spec.Node,
 			"--deploy-method", string(snapshot.Spec.DeployMethod),
+			"--action", string(snapshot.Spec.Action),
 			"--block-height", strconv.FormatInt(snapshot.Spec.BlockHeight, 10),
 			"--consensus", consensus,
 		}

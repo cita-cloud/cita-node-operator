@@ -43,14 +43,14 @@ func CreateNode(deployMethod DeployMethod, namespace, name string, client client
 type Node interface {
 	Stop(ctx context.Context) error
 	CheckStopped(ctx context.Context) error
-	Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error
+	Fallback(ctx context.Context, action Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error
 	Start(ctx context.Context) error
 	Backup(ctx context.Context, action Action, sourcePath string, destPath string, options *common.CompressOptions) error
 	Restore(ctx context.Context, action Action, sourcePath string, destPath string, options *common.DecompressOptions, deleteConsensusData bool) error
 	GetName() string
 	GetAccountConfigmap(ctx context.Context) (string, error)
 	UpdateAccountConfigmap(ctx context.Context, newConfigmap string) error
-	Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error
-	SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error
+	Snapshot(ctx context.Context, action Action, blockHeight int64, crypto, consensus string) error
+	SnapshotRecover(ctx context.Context, action Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error
 	ChangeOwner(ctx context.Context, action Action, uid, gid int64) error
 }

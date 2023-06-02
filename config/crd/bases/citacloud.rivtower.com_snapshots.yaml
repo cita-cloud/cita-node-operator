@@ -35,6 +35,9 @@ spec:
           spec:
             description: SnapshotSpec defines the desired state of Snapshot
             properties:
+              action:
+                description: Action
+                type: string
               blockHeight:
                 description: BlockHeight
                 format: int64

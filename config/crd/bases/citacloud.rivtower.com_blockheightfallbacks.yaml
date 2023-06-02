@@ -38,6 +38,9 @@ spec:
           spec:
             description: BlockHeightFallbackSpec defines the desired state of BlockHeightFallback
             properties:
+              action:
+                description: Action
+                type: string
               blockHeight:
                 description: BlockHeight
                 format: int64

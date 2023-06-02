@@ -34,6 +34,7 @@ type Snapshot struct {
 	chain        string
 	node         string
 	deployMethod string
+	action       string
 	blockHeight  int64
 	crypto       string
 	consensus    string
@@ -51,6 +52,7 @@ func NewSnapshot() *cobra.Command {
 	cc.Flags().StringVarP(&snapshot.chain, "chain", "c", "test-node", "The node name this node belongs to.")
 	cc.Flags().StringVarP(&snapshot.node, "node", "", "", "The node that you want to snapshot.")
 	cc.Flags().StringVarP(&snapshot.deployMethod, "deploy-method", "d", "cloud-config", "The node of deploy method.")
+	cc.Flags().StringVarP(&snapshot.action, "action", "a", "StopAndStart", "The action when node restore.")
 	cc.Flags().Int64VarP(&snapshot.blockHeight, "block-height", "b", 999999999, "The block height you want to snapshot.")
 	cc.Flags().StringVarP(&snapshot.crypto, "crypto", "", "sm", "The node of crypto. [sm/eth]")
 	cc.Flags().StringVarP(&snapshot.consensus, "consensus", "", "bft", "The node of consensus. [bft/raft]")
@@ -83,6 +85,17 @@ func snapshotFunc(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
+	var action nodepkg.Action
+	switch snapshot.action {
+	case string(nodepkg.StopAndStart):
+		action = nodepkg.StopAndStart
+	case string(nodepkg.Direct):
+		action = nodepkg.Direct
+	default:
+		setupLog.Error(fmt.Errorf("invalid parameter for action"), "invalid parameter for action")
+		os.Exit(1)
+	}
+
 	node, err := nodepkg.CreateNode(dm, snapshot.namespace, snapshot.node, k8sClient, snapshot.chain, exec.New())
 	if err != nil {
 		setupLog.Error(err, "unable to init node")
@@ -90,7 +103,7 @@ func snapshotFunc(cmd *cobra.Command, args []string) {
 	}
 	ctx := context.Background()
 	err = common.AddLogToPodAnnotation(ctx, k8sClient, func() error {
-		return node.Snapshot(ctx, snapshot.blockHeight, snapshot.crypto, snapshot.consensus)
+		return node.Snapshot(ctx, action, snapshot.blockHeight, snapshot.crypto, snapshot.consensus)
 	})
 	if err != nil {
 		setupLog.Error(err, "exec snapshot failed")

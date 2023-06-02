@@ -35,6 +35,8 @@ type BlockHeightFallbackSpec struct {
 	BlockHeight int64 `json:"blockHeight"`
 	// DeployMethod
 	DeployMethod node.DeployMethod `json:"deployMethod"`
+	// Action
+	Action node.Action `json:"action,omitempty"`
 	// Image
 	Image string `json:"image,omitempty"`
 	// PullPolicy

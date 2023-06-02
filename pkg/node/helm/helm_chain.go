@@ -48,7 +48,7 @@ type helmNode struct {
 	replicas  *int32
 }
 
-func (h *helmNode) SnapshotRecover(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
+func (h *helmNode) SnapshotRecover(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	//TODO implement me
 	panic("implement me")
 }
@@ -142,7 +142,7 @@ func (h *helmNode) CheckStopped(ctx context.Context) error {
 	return nil
 }
 
-func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
+func (h *helmNode) Fallback(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string, deleteConsensusData bool) error {
 	err := h.Stop(ctx)
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (h *helmNode) Fallback(ctx context.Context, blockHeight int64, crypto, cons
 	return err
 }
 
-func (h *helmNode) Snapshot(ctx context.Context, blockHeight int64, crypto, consensus string) error {
+func (h *helmNode) Snapshot(ctx context.Context, action node.Action, blockHeight int64, crypto, consensus string) error {
 	//TODO implement me
 	panic("implement me")
 }

@@ -39,6 +39,8 @@ type SnapshotSpec struct {
 	StorageClass string `json:"storageClass,omitempty"`
 	// PvcSize
 	PvcSize string `json:"pvcSize,omitempty"`
+	// Action
+	Action nodepkg.Action `json:"action,omitempty"`
 	// Image
 	Image string `json:"image,omitempty"`
 	// PullPolicy
