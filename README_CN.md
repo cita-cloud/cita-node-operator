@@ -63,7 +63,7 @@ spec:
   # 消块节点的部署方式：python/cloud-config/helm（必选）
   deployMethod: cloud-config
   # 执行备份任务的镜像（可选，不指定默认会取latest镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: Always
   # 多长时间后删除job资源：秒为单位(可选： 默认30s)
@@ -71,6 +71,8 @@ spec:
   # job产生的pod是否和区块链节点具有亲和性(可选： 默认false)
   # pvc为RWO时，只允许一个work node挂载pv，这是可能会导致job pod hang住，所以这种情况下需要设置该字段为：true
   podAffinityFlag: true
+  # 是否删除共识数据 (可选： 默认为false)
+  deleteConsensusData: true
 ```
 
 ### Backup
@@ -101,7 +103,7 @@ spec:
   # 备份时相应的动作（可选，不指定默认为StopAndStart，Direct:直接进行数据拷贝恢复/StopAndStart:恢复前关闭节点，恢复后启动节点）
   action: StopAndStart
   # 执行备份任务的镜像（可选，不指定默认会取latest镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: IfNotPresent
   # 多长时间后删除job资源：秒为单位(可选： 默认30s)
@@ -138,8 +140,10 @@ spec:
   deployMethod: cloud-config
   # 快照PVC所属的storage class（可选，不指定会默认和快照节点的storage class保持一致）
   storageClass: nas-client-provisioner
-  # 执行快照任务的镜像（可选，不指定默认会取v0.0.2镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  # 若设置该字段，则pvc的大小为该值 (可选)
+  pvcSize: 5Gi
+  # 执行快照任务的镜像（可选，不指定默认会取latest镜像）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: IfNotPresent
   # 多长时间后删除job资源：秒为单位(可选： 默认30s)
@@ -177,7 +181,7 @@ spec:
   # 恢复时相应的动作（可选，不指定默认为StopAndStart，Direct:直接进行数据拷贝恢复/StopAndStart:恢复前关闭节点，恢复后启动节点）
   action: StopAndStart
   # 执行恢复任务的镜像（可选，不指定默认会取latest镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: IfNotPresent
   # 多长时间后删除job资源：秒为单位
@@ -185,6 +189,8 @@ spec:
   # job产生的pod是否和区块链节点具有亲和性(可选： 默认false)
   # pvc为RWO时，只允许一个work node挂载pv，这是可能会导致job pod hang住，所以这种情况下需要设置该字段为：true
   podAffinityFlag: true
+  # 是否删除共识数据 (可选： 默认为false)
+  deleteConsensusData: true
 ```
 
 #### 根据快照恢复
@@ -208,8 +214,8 @@ spec:
   snapshot: snapshot-sample
   # 快照恢复时相应的动作（可选，不指定默认为StopAndStart，Direct:直接进行快照恢复命令/StopAndStart:快照恢复前关闭节点，快照恢复后启动节点）
   action: StopAndStart
-  # 执行快照恢复任务的镜像（可选，不指定默认会取v0.0.2镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  # 执行快照恢复任务的镜像（可选，不指定默认会取latest镜像）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: IfNotPresent
   # 多长时间后删除job资源：秒为单位(可选： 默认30s)
@@ -217,6 +223,100 @@ spec:
   # job产生的pod是否和区块链节点具有亲和性(可选： 默认false)
   # pvc为RWO时，只允许一个work node挂载pv，这是可能会导致job pod hang住，所以这种情况下需要设置该字段为：true
   podAffinityFlag: true
+  # 是否删除共识数据 (可选： 默认为false)
+  deleteConsensusData: true
+```
+
+### Duplicate
+
+Duplicate: 备份数据至存在的PVC种
+
+#### 创建Duplicate任务
+
+> 对一个节点进行duplicate：停节点->duplicate->启节点
+
+```yaml
+apiVersion: citacloud.rivtower.com/v1
+kind: Duplicate
+metadata:
+  name: duplicate-sample
+  namespace: rivspace
+spec:
+  # 需要duplicate的节点对应的链名（必选）
+  chain: test-chain-zenoh-overlord
+  # 需要duplicate的节点名（必选）
+  node: test-chain-zenoh-overlord-0
+  # 节点的部署方式：python/cloud-config/helm（必选）
+  deployMethod: python
+  # 后端存储（必选）
+  backend:
+    # 备份数据存放的pvc名
+    pvc: resource-management-nas
+    # 备份数据在pvc内的存放路径，如果路径已存在，则会创建
+    path: /data/backup
+  # duplicate时相应的动作（可选，不指定默认为StopAndStart，Direct:直接进行duplicate命令/StopAndStart:duplicate前关闭节点，duplicate后启动节点）
+  action: Direct
+  # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
+  pullPolicy: Always
+  # 执行duplicate任务的镜像（可选，不指定默认会取latest镜像）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  # 多长时间后删除job资源：秒为单位(可选： 默认30s)
+  ttlSecondsAfterFinished: 30
+  # job产生的pod是否和区块链节点具有亲和性(可选： 默认false)
+  # pvc为RWO时，只允许一个work node挂载pv，这是可能会导致job pod hang住，所以这种情况下需要设置该字段为：true
+  podAffinityFlag: true
+  # 如果你想要压缩备份文件， 你可以设置该字段 (可选)
+  compress:
+    # 压缩类型
+    type: gzip
+    # 压缩后包名
+    file: cita.tar.gz
+```
+
+### Recover
+
+Recover: 从已存在的PVC中恢复数据.
+
+#### Create a Recover job
+
+> Main step：shutdown node -> recover -> start node
+
+```yaml
+apiVersion: citacloud.rivtower.com/v1
+kind: Recover
+metadata:
+  name: recover-sample
+  namespace: rivspace
+spec:
+  # 需要recover的节点对应的链名（必选）
+  chain: test-chain-zenoh-overlord
+  # 需要recover的节点名（必选）
+  node: test-chain-zenoh-overlord-node0
+  # 节点的部署方式：python/cloud-config/helm（必选）
+  deployMethod: cloud-config
+  # 后端存储（必选）
+  backend:
+    # 备份数据存放的pvc名
+    pvc: local-pvc
+    # 备份数据在pvc内的存放路径，如果路径已存在，则会创建
+    path: /data/my-chain-0
+  # recover时相应的动作（可选，不指定默认为StopAndStart，Direct:直接进行recover命令/StopAndStart:recover前关闭节点，recover后启动节点）
+  action: StopAndStart
+  # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
+  pullPolicy: Always
+  # 执行recover任务的镜像（可选，不指定默认会取latest镜像）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  # job产生的pod是否和区块链节点具有亲和性(可选： 默认false)
+  # pvc为RWO时，只允许一个work node挂载pv，这是可能会导致job pod hang住，所以这种情况下需要设置该字段为：true
+  podAffinityFlag: true
+  # 多长时间后删除job资源：秒为单位(可选： 默认30s)
+  ttlSecondsAfterFinished: 30
+  # 是否删除共识数据 (可选： 默认为false)
+  deleteConsensusData: true
+  # 如果备份数据是被压缩过的，你应该指定这个字段 (可选)
+  decompress:
+    # 被解压的包名
+    file: cita.tar.gz
 ```
 
 ### Switchover
@@ -240,8 +340,8 @@ spec:
   sourceNode: test-chain-zenoh-bft-node0
   # 节点二（必选）
   destNode: test-chain-zenoh-bft-node1
-  # 执行快照恢复任务的镜像（可选，不指定默认会取v0.0.2镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  # 执行快照恢复任务的镜像（可选，不指定默认会取latest镜像）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: IfNotPresent
   # 多长时间后删除job资源：秒为单位(可选： 默认30s)
@@ -270,8 +370,8 @@ spec:
   uid: 1000
   # chown的gid（可选：默认为1000）
   gid: 1000
-  # 执行chown任务的镜像（可选，不指定默认会取v0.0.2镜像）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  # 执行chown任务的镜像（可选，不指定默认会取latest镜像）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # 上述镜像的拉取策略（可选，IfNotPresent/Always/Never，不指定默认会取IfNotPresent）
   pullPolicy: IfNotPresent
   # 多长时间后删除job资源：秒为单位(可选： 默认30s)
