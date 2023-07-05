@@ -65,13 +65,15 @@ spec:
   # How nodes are deployed: python/cloud-config/helm (required)
   deployMethod: cloud-config
   # The image of job's pod（optional，default: latest）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # The image's pull policy（optional, IfNotPresent/Always/Never, default: IfNotPresent）
   pullPolicy: Always
   # How long to delete finished job resources: seconds unit(optional, default: 30s)
   ttlSecondsAfterFinished: 30
   # Whether the job's pod has affinity with the blockchain node(optional, default: false)
   podAffinityFlag: true
+  # weather or not delete consensus data when block height fallback (optional, default: false)
+  deleteConsensusData: true
 ```
 
 ### Backup
@@ -97,15 +99,17 @@ spec:
   deployMethod: python
   # The storage class used by the backup PVC (optional，default: the same with node's storage class)
   storageClass: nas-client-provisioner
+  # If set this field, operator will set the pvc size to the value you specify (optional)
+  pvcSize: 5Gi
   # The actions during backup (optional, default: StopAndStart. Direct: direct data copy; StopAndStart: Shut down the node before backup and start the node after backup)
   action: StopAndStart
   # The image of job's pod（optional，default: latest）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
-  # The image's pull policy（optional, IfNotPresent/Always/Never, default: IfNotPresent）
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  # The image's pull policy (optional, IfNotPresent/Always/Never, default: IfNotPresent)
   pullPolicy: IfNotPresent
-  # How long to delete finished job resources: seconds unit(optional, default: 30s)
+  # How long to delete finished job resources: seconds unit (optional, default: 30s)
   ttlSecondsAfterFinished: 30
-  # Whether the job's pod has affinity with the blockchain node(optional, default: false)
+  # Whether the job's pod has affinity with the blockchain node (optional, default: false)
   podAffinityFlag: true
 ```
 
@@ -113,7 +117,7 @@ spec:
 
 Snapshot: Take a snapshot of a node and back up the snapshot data to a new PVC.
 
-#### Create a Backup job
+#### Create a Snapshot job
 
 > Main step：shutdown node -> snapshot -> start node
 
@@ -135,7 +139,7 @@ spec:
   # The storage class used by the snapshot PVC (optional，default: the same with node's storage class)
   storageClass: nas-client-provisioner
   # The image of job's pod（optional，default: latest）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # The image's pull policy（optional, IfNotPresent/Always/Never, default: IfNotPresent）
   pullPolicy: IfNotPresent
   # How long to delete finished job resources: seconds unit(optional, default: 30s)
@@ -170,13 +174,15 @@ spec:
   # The actions during restore (optional, default: StopAndStart. Direct: direct data copy; StopAndStart: Shut down the node before restore and start the node after restore)
   action: StopAndStart
   # The image of job's pod (optional，default: latest)
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # The image's pull policy (optional, IfNotPresent/Always/Never, default: IfNotPresent)
   pullPolicy: IfNotPresent
   # How long to delete finished job resources: seconds unit (optional, default: 30s)
   ttlSecondsAfterFinished: 30
   # Whether the job's pod has affinity with the blockchain node (optional, default: false)
   podAffinityFlag: true
+  # weather or not delete consensus data when restore (optional, default: false)
+  deleteConsensusData: true
 ```
 
 #### Restore from snapshot
@@ -201,13 +207,105 @@ spec:
   # The actions during restore (optional, default: StopAndStart. Direct: direct data copy; StopAndStart: Shut down the node before restore and start the node after restore)
   action: StopAndStart
   # The image of job's pod (optional，default: latest)
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # The image's pull policy (optional, IfNotPresent/Always/Never, default: IfNotPresent)
   pullPolicy: IfNotPresent
   # How long to delete finished job resources: seconds unit (optional, default: 30s)
   ttlSecondsAfterFinished: 30
   # Whether the job's pod has affinity with the blockchain node (optional, default: false)
   podAffinityFlag: true
+  # weather or not delete consensus data when restore (optional, default: false)
+  deleteConsensusData: true
+```
+
+### Duplicate
+
+Duplicate: Backup the data of a node to a exist PVC.
+
+#### Create a Duplicate job
+
+> Main step：shutdown node -> duplicate -> start node
+
+```yaml
+apiVersion: citacloud.rivtower.com/v1
+kind: Duplicate
+metadata:
+  name: duplicate-sample
+  namespace: rivspace
+spec:
+  # The chain name for node (required)
+  chain: test-chain-zenoh-overlord
+  # The node name (required)
+  node: test-chain-zenoh-overlord-0
+  # How nodes are deployed: python/cloud-config/helm (required)
+  deployMethod: python
+  # The backend you can set (required)
+  backend:
+    # backup target pvc name
+    pvc: resource-management-nas
+    # the path dir in pvc, if not exist, will create one
+    path: /data/backup
+  # The actions during restore (optional, default: StopAndStart. Direct: direct data copy; StopAndStart: Shut down the node before restore and start the node after restore)
+  action: Direct
+  # The image's pull policy (optional, IfNotPresent/Always/Never, default: IfNotPresent)
+  pullPolicy: Always
+  # The image of job's pod (optional，default: latest)
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  # How long to delete finished job resources: seconds unit (optional, default: 30s)
+  ttlSecondsAfterFinished: 30
+  # Whether the job's pod has affinity with the blockchain node (optional, default: false)
+  podAffinityFlag: true
+  # If you want to compress the backup file, you can set this field (optional)
+  compress:
+    # the compress type
+    type: gzip
+    # compressed package name
+    file: cita.tar.gz
+```
+
+### Recover
+
+Recover: Recover the data of a node from a exist PVC.
+
+#### Create a Recover job
+
+> Main step：shutdown node -> recover -> start node
+
+```yaml
+apiVersion: citacloud.rivtower.com/v1
+kind: Recover
+metadata:
+  name: recover-sample
+  namespace: rivspace
+spec:
+  # The chain name for node (required)
+  chain: test-chain-zenoh-overlord
+  # The node name (required)
+  node: test-chain-zenoh-overlord-node0
+  # How nodes are deployed: python/cloud-config/helm (required)
+  deployMethod: cloud-config
+  # The backend you can set (required)
+  backend:
+    # backup target pvc name
+    pvc: local-pvc
+    # the path dir in pvc, if not exist, will create one
+    path: /data/my-chain-0
+  # The actions during restore (optional, default: StopAndStart. Direct: direct data copy; StopAndStart: Shut down the node before restore and start the node after restore)
+  action: StopAndStart
+  # The image's pull policy (optional, IfNotPresent/Always/Never, default: IfNotPresent)
+  pullPolicy: Always
+  # The image of job's pod (optional，default: latest)
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
+  # Whether the job's pod has affinity with the blockchain node (optional, default: false)
+  podAffinityFlag: true
+  # How long to delete finished job resources: seconds unit (optional, default: 30s)
+  ttlSecondsAfterFinished: 30
+  # weather or not delete consensus data when restore (optional, default: false)
+  deleteConsensusData: true
+  # If you compressed when backup, you should set this field (optional)
+  decompress:
+    # decompress package name
+    file: cita.tar.gz
 ```
 
 ### Switchover
@@ -232,7 +330,7 @@ spec:
   # second node (required)
   destNode: test-chain-zenoh-bft-node1
   # The image of job's pod（optional，default: latest）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # The image's pull policy（optional, IfNotPresent/Always/Never, default: IfNotPresent）
   pullPolicy: IfNotPresent
   # How long to delete finished job resources: seconds unit(optional, default: 30s)
@@ -262,7 +360,7 @@ spec:
   # chown gid (optional, default: 1000)
   gid: 1000
   # The image of job's pod（optional，default: latest）
-  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:v0.0.2
+  image: registry.devops.rivtower.com/cita-cloud/cita-node-job:latest
   # The image's pull policy（optional, IfNotPresent/Always/Never, default: IfNotPresent）
   pullPolicy: IfNotPresent
   # How long to delete finished job resources: seconds unit(optional, default: 30s)
